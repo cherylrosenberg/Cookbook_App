@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { Recipe } from '@/lib/supabase'
+import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
 import RecipeDetailView from '@/components/RecipeDetailView'
 import EditRecipeForm from '@/components/EditRecipeForm'
 
@@ -40,18 +40,20 @@ export default function RecipePage() {
           
           // Handle the actual structure from Gemini: { optional: [], sections: [] }
           if (data.ingredients && typeof data.ingredients === 'object' && !Array.isArray(data.ingredients)) {
-            const normalized: any[] = []
+            // Type guard to check if it's RawIngredients format
+            const rawIngredients = data.ingredients as RawIngredients
+            const normalized: IngredientSection[] = []
             
             // Add sections array
-            if (Array.isArray(data.ingredients.sections)) {
-              normalized.push(...data.ingredients.sections)
+            if (Array.isArray(rawIngredients.sections)) {
+              normalized.push(...rawIngredients.sections)
             }
             
             // Add optional ingredients as a section
-            if (Array.isArray(data.ingredients.optional) && data.ingredients.optional.length > 0) {
+            if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
               normalized.push({
                 section: 'Optional ingredients',
-                items: data.ingredients.optional
+                items: rawIngredients.optional
               })
             }
             

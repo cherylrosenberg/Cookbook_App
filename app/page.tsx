@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Recipe } from '@/lib/supabase'
+import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
 import RecipeCard from '@/components/RecipeCard'
 import RecipeInputModal from '@/components/RecipeInputModal'
 import SearchAndFilters from '@/components/SearchAndFilters'
@@ -56,17 +56,19 @@ export default function Home() {
           }
           
           // Handle the actual structure: { optional: [], sections: [] }
+          // Type guard to check if it's RawIngredients format
           if (recipe.ingredients && typeof recipe.ingredients === 'object' && !Array.isArray(recipe.ingredients)) {
-            const normalized: any[] = []
+            const rawIngredients = recipe.ingredients as RawIngredients
+            const normalized: IngredientSection[] = []
             
-            if (Array.isArray(recipe.ingredients.sections)) {
-              normalized.push(...recipe.ingredients.sections)
+            if (Array.isArray(rawIngredients.sections)) {
+              normalized.push(...rawIngredients.sections)
             }
             
-            if (Array.isArray(recipe.ingredients.optional) && recipe.ingredients.optional.length > 0) {
+            if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
               normalized.push({
                 section: 'Optional ingredients',
-                items: recipe.ingredients.optional
+                items: rawIngredients.optional
               })
             }
             

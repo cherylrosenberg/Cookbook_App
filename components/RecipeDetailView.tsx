@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Recipe } from '@/lib/supabase'
+import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
 import { ArrowLeft, Edit, Clock, Users, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
 import { scaleQuantity as scaleQuantityUtil, calculateTotalTime } from '@/lib/quantity-parser'
 
@@ -164,12 +164,13 @@ export default function RecipeDetailView({
           {(() => {
             // Normalize ingredients to ensure it's always an array
             // Handle different data structures: array, string, or { optional: [], sections: [] }
-            let ingredients: any[] = []
+            let ingredients: IngredientSection[] = []
             
             if (recipe.ingredients) {
               if (typeof recipe.ingredients === 'string') {
                 try {
-                  ingredients = JSON.parse(recipe.ingredients)
+                  const parsed = JSON.parse(recipe.ingredients)
+                  ingredients = Array.isArray(parsed) ? parsed : []
                 } catch (e) {
                   console.error('Failed to parse ingredients JSON:', e)
                   ingredients = []
@@ -178,16 +179,18 @@ export default function RecipeDetailView({
                 ingredients = recipe.ingredients
               } else if (typeof recipe.ingredients === 'object') {
                 // Handle structure: { optional: [], sections: [] }
-                const normalized: any[] = []
+                // Type guard to check if it's RawIngredients format
+                const rawIngredients = recipe.ingredients as RawIngredients
+                const normalized: IngredientSection[] = []
                 
-                if (Array.isArray(recipe.ingredients.sections)) {
-                  normalized.push(...recipe.ingredients.sections)
+                if (Array.isArray(rawIngredients.sections)) {
+                  normalized.push(...rawIngredients.sections)
                 }
                 
-                if (Array.isArray(recipe.ingredients.optional) && recipe.ingredients.optional.length > 0) {
+                if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
                   normalized.push({
                     section: 'Optional ingredients',
-                    items: recipe.ingredients.optional
+                    items: rawIngredients.optional
                   })
                 }
                 

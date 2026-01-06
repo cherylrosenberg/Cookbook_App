@@ -21,6 +21,7 @@ export const supabase = createClient(
 )
 
 // Types
+// Recipe from database may have ingredients in various formats
 export interface Recipe {
   id: string
   user_id: string | null
@@ -29,7 +30,7 @@ export interface Recipe {
   prep_time: string | null
   cook_time: string | null
   total_time: string | null
-  ingredients: IngredientSection[]
+  ingredients: IngredientSection[] | RawIngredients | string
   instructions: string[]
   tags: string[]
   source_url: string | null
@@ -47,6 +48,18 @@ export interface IngredientItem {
   ingredient: string
   quantity: string
 }
+
+// Raw ingredients format from Gemini API
+export interface RawIngredients {
+  sections: IngredientSection[]
+  optional?: IngredientItem[]
+}
+
+// Ingredients can be in multiple formats:
+// 1. Normalized array format: IngredientSection[]
+// 2. Raw API format: { sections: [], optional: [] }
+// 3. String (JSON) that needs parsing
+export type IngredientsInput = IngredientSection[] | RawIngredients | string
 
 export interface RecipeInput {
   title: string

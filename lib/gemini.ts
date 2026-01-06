@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { RecipeInput } from './supabase'
+import { RecipeInput, RawIngredients, IngredientSection } from './supabase'
 
 // List available models for debugging
 // Note: listModels might not be available in all SDK versions
@@ -124,11 +124,35 @@ export async function extractRecipeFromText(text: string, sourceUrl?: string): P
       jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
     }
 
-    const recipe = JSON.parse(jsonText) as RecipeInput
+    const recipe = JSON.parse(jsonText) as any
+
+    // Normalize ingredients from RawIngredients format to IngredientSection[]
+    if (recipe.ingredients && typeof recipe.ingredients === 'object' && !Array.isArray(recipe.ingredients)) {
+      const rawIngredients = recipe.ingredients as RawIngredients
+      const normalized: IngredientSection[] = []
+      
+      if (Array.isArray(rawIngredients.sections)) {
+        normalized.push(...rawIngredients.sections)
+      }
+      
+      if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
+        normalized.push({
+          section: 'Optional ingredients',
+          items: rawIngredients.optional
+        })
+      }
+      
+      recipe.ingredients = normalized.length > 0 ? normalized : []
+    }
 
     // Validate required fields
     if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
       throw new Error('Invalid recipe structure: missing required fields')
+    }
+
+    // Ensure ingredients is an array
+    if (!Array.isArray(recipe.ingredients)) {
+      recipe.ingredients = []
     }
 
     // Parse servings - handle both string and number formats
@@ -152,7 +176,7 @@ export async function extractRecipeFromText(text: string, sourceUrl?: string): P
       recipe.tags = []
     }
 
-    return recipe
+    return recipe as RecipeInput
   } catch (error) {
     console.error('Error extracting recipe:', error)
     throw new Error(`Failed to extract recipe: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -213,11 +237,35 @@ export async function extractRecipeFromUrl(url: string): Promise<RecipeInput> {
       jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
     }
 
-    const recipe = JSON.parse(jsonText) as RecipeInput
+    const recipe = JSON.parse(jsonText) as any
+
+    // Normalize ingredients from RawIngredients format to IngredientSection[]
+    if (recipe.ingredients && typeof recipe.ingredients === 'object' && !Array.isArray(recipe.ingredients)) {
+      const rawIngredients = recipe.ingredients as RawIngredients
+      const normalized: IngredientSection[] = []
+      
+      if (Array.isArray(rawIngredients.sections)) {
+        normalized.push(...rawIngredients.sections)
+      }
+      
+      if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
+        normalized.push({
+          section: 'Optional ingredients',
+          items: rawIngredients.optional
+        })
+      }
+      
+      recipe.ingredients = normalized.length > 0 ? normalized : []
+    }
 
     // Validate required fields
     if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
       throw new Error('Invalid recipe structure: missing required fields')
+    }
+
+    // Ensure ingredients is an array
+    if (!Array.isArray(recipe.ingredients)) {
+      recipe.ingredients = []
     }
 
     // Parse servings - handle both string and number formats
@@ -244,7 +292,7 @@ export async function extractRecipeFromUrl(url: string): Promise<RecipeInput> {
     // Ensure source_url is set
     recipe.source_url = url
 
-    return recipe
+    return recipe as RecipeInput
   } catch (error) {
     console.error('Error extracting recipe from URL with fileData:', error)
     console.error('Error details:', {
