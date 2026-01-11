@@ -5,6 +5,7 @@ import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
 import RecipeCard from '@/components/RecipeCard'
 import RecipeInputModal from '@/components/RecipeInputModal'
 import SearchAndFilters from '@/components/SearchAndFilters'
+import CarrotLoading from '@/components/CarrotLoading'
 
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -153,7 +154,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-forest-green text-xl">Loading recipes...</div>
+        <CarrotLoading />
       </div>
     )
   }
@@ -161,10 +162,10 @@ export default function Home() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+        <div className="max-w-md w-full bg-gray-50 rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-bold text-red-600 mb-2">Error Loading Recipes</h2>
           <p className="text-gray-700 mb-4">{error}</p>
-          <div className="bg-gray-50 p-4 rounded mb-4">
+          <div className="bg-white p-4 rounded mb-4">
             <p className="text-sm text-gray-600 mb-2">Troubleshooting steps:</p>
             <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
               <li>Check that your <code className="bg-gray-200 px-1 rounded">.env.local</code> file exists</li>

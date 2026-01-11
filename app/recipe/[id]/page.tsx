@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
 import RecipeDetailView from '@/components/RecipeDetailView'
 import EditRecipeForm from '@/components/EditRecipeForm'
+import CarrotLoading from '@/components/CarrotLoading'
 
 export default function RecipePage() {
   const router = useRouter()
@@ -109,7 +110,7 @@ export default function RecipePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-forest-green text-xl">Loading recipe...</div>
+        <CarrotLoading />
       </div>
     )
   }

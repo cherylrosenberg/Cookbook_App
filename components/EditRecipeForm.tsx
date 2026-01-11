@@ -157,7 +157,7 @@ export default function EditRecipeForm({
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8 bg-white">
+    <div className="min-h-screen p-4 md:p-6 lg:p-8 bg-gray-50">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <button

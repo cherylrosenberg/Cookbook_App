@@ -123,7 +123,7 @@ export default function RecipeDetailView({
         )}
 
         {/* Serving Size Adjuster */}
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-md">
+        <div className="bg-gray-50 rounded-lg p-6 mb-6 shadow-md">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-gray-600 mb-1">Servings</div>
@@ -158,7 +158,7 @@ export default function RecipeDetailView({
         </div>
 
         {/* Ingredients */}
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-md">
+        <div className="bg-gray-50 rounded-lg p-6 mb-6 shadow-md">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Ingredients</h2>
           {/* Render ingredients - handle normalization */}
           {(() => {
@@ -281,7 +281,7 @@ export default function RecipeDetailView({
         </div>
 
         {/* Instructions */}
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-md">
+        <div className="bg-gray-50 rounded-lg p-6 mb-6 shadow-md">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Instructions</h2>
           <ol className="space-y-4">
             {recipe.instructions.map((instruction, index) => {

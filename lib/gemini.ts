@@ -20,83 +20,34 @@ export async function listAvailableModels(): Promise<string[]> {
   }
 }
 
-const GEMINI_PROMPT = `​​You are a recipe extraction assistant.
-Given recipe content (from a blog post, social media caption, or notes), extract and return ONLY valid JSON using the following structure:
+const GEMINI_PROMPT = `You are a recipe extraction assistant. Extract recipe content and return ONLY valid JSON:
+
 {
 "title": "string",
 "servings": "string",
-"prep_time": "string (if not stated, estimate reasonably)",
-"cook_time": "string (if not stated, estimate reasonably)",
+"prep_time": "string (estimate if not stated)",
+"cook_time": "string (estimate if not stated)",
 "ingredients": {
-"sections": [
-{
-"section": "string",
-"items": [
-{ "ingredient": "string", "quantity": "string" }
-]
-}
-],
-"optional": [
-{ "ingredient": "string", "quantity": "string" }
-]
+  "sections": [{"section": "string", "items": [{"ingredient": "string", "quantity": "string"}]}],
+  "optional": [{"ingredient": "string", "quantity": "string"}]
 },
 "instructions": ["string"],
 "tags": ["string"],
-"source_url": "string (include if provided)"
+"source_url": "string"
 }
+
 Rules:
-Title
-Extract the recipe title.
-If no title exists, infer a reasonable one from the content.
-Servings
-If the recipe explicitly states servings, yield, or number of portions, extract the number (e.g., "6 servings" -> 6, "serves 4" -> 4).
-Return as a number (integer), not a string.
-If servings are NOT explicitly stated, return 0 (zero).
-Do NOT estimate servings.
-Ingredient Sections
-If the recipe lists ingredients in multiple sections (e.g., “Salad”, “Vinaigrette”, “Sauce”), preserve those sections exactly.
-Each section must appear in the order shown in the recipe.
-If the recipe has only one ingredient list, create a single section named "Main".
-Optional Ingredients
-Ingredients explicitly labeled as optional, suggested, or “to taste” should be placed in the top-level "optional" list.
-Do NOT place optional ingredients inside ingredient sections.
-Ingredients
-Extract ingredients exactly as written, including quantities and units.
-Do NOT add ingredients that are not present in the source.
-If a quantity is unclear or missing, infer a reasonable amount and mark it as "(estimated)".
-Instructions
-Extract step-by-step instructions exactly as written.
-Number each instruction sequentially.
-For each ingredient:
-Include the full ingredient quantity the FIRST time the ingredient appears in the instructions.
-Do NOT repeat the full quantity in subsequent steps.
+- Title: Extract or infer from content
+- Servings: Copy exactly if stated, otherwise infer from quantities
+- Prep/Cook Time: Copy if stated, otherwise estimate reasonably
+- Ingredient Sections: Preserve multiple sections exactly in order. Single list → "Main" section
+- Optional Ingredients: Place in top-level "optional" array, NOT in sections
+- Ingredients: Extract exactly as written. Mark unclear quantities as "(estimated)". Do NOT add missing ingredients
+- Instructions: Extract exactly as written. Include full quantity on FIRST mention only. CRITICAL: If instruction specifies partial quantity (e.g., "½ cup"), use ONLY that partial quantity - never include full quantity in same step
+- Tags: 2-4 broad tags, Sentence case. Categories: meal (Breakfast/Lunch/Dinner), cuisine (American/Asian/Mexican), ingredient category (Vegetarian/Vegan/Chicken/Beef/Pasta), meal type (Soup/Chili/Salad). Vegan dishes = "Vegan" only (not "Vegetarian"). Avoid specific tags like "aubergine" or "pan-seared"
+- Source URL: Include if provided
 
-
-Partial quantity rule (very important):
-If an instruction explicitly specifies a partial quantity (e.g., "½ cup", "1 teaspoon"):
-Use ONLY the partial quantity exactly as written.
-Do NOT include the full ingredient quantity anywhere in that instruction.
-Do NOT add the full quantity in parentheses or in any other form.
-
-
-
-
-Never show both a partial quantity and a full quantity for the same ingredient in the same instruction.
-Do NOT remove, paraphrase, or add steps.
-Prep Time and Cook Time
-If explicitly stated, copy exactly.
-If not stated, estimate reasonably based on the recipe content.
-Tags
-Suggest 1–5 relevant tags based on cuisine, meal type, or cooking method.
-Source URL
-Include the source URL if provided in the input.
-Output rules:
-Return valid JSON only.
-Do NOT add extra keys.
-Do NOT include commentary or explanations.
-Ensure proper JSON syntax.
-Do NOT hallucinate ingredients, steps, sections, servings, or metadata.
-`
+Output: Valid JSON only. No extra keys, commentary, or explanations. Do NOT hallucinate any data.`
 
 export async function extractRecipeFromText(text: string, sourceUrl?: string): Promise<RecipeInput> {
   const apiKey = process.env.GEMINI_API_KEY
@@ -114,7 +65,13 @@ export async function extractRecipeFromText(text: string, sourceUrl?: string): P
   }
 
   try {
-    const result = await model.generateContent(prompt)
+    const result = await model.generateContent(prompt, {
+      generationConfig: {
+        temperature: 0.1,
+        topK: 40,
+        topP: 0.95,
+      },
+    } as any)
     const response = await result.response
     const text = response.text()
 
@@ -212,15 +169,24 @@ export async function extractRecipeFromUrl(url: string): Promise<RecipeInput> {
     let result
     try {
       // Some SDK versions might support HTTP URLs via fileData
-      result = await model.generateContent([
-        { text: prompt },
+      result = await model.generateContent(
+        [
+          { text: prompt },
+          {
+            fileData: {
+              mimeType: 'text/html',
+              fileUri: url, // Note: This may only work for gs:// URIs, not http:// URLs
+            },
+          } as any,
+        ],
         {
-          fileData: {
-            mimeType: 'text/html',
-            fileUri: url, // Note: This may only work for gs:// URIs, not http:// URLs
+          generationConfig: {
+            temperature: 0.1,
+            topK: 40,
+            topP: 0.95,
           },
-        } as any,
-      ])
+        } as any
+      )
     } catch (fileDataError: any) {
       // fileData.fileUri doesn't support HTTP URLs - this is expected
       // The error message will be logged and we'll fall back

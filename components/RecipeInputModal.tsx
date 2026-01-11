@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { X } from 'lucide-react'
+import CarrotLoading from './CarrotLoading'
 
 interface RecipeInputModalProps {
   onClose: () => void
@@ -64,9 +65,20 @@ export default function RecipeInputModal({
     }
   }
 
+  // Show full-screen loading state during extraction
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-2xl p-12 flex flex-col items-center justify-center">
+          <CarrotLoading text="Extracting recipe" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-50 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
@@ -144,16 +156,9 @@ export default function RecipeInputModal({
             <button
               onClick={handleExtract}
               disabled={loading || !content.trim()}
-              className="flex-1 bg-forest-green text-white py-2 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 bg-forest-green text-white py-2 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Extracting...
-                </>
-              ) : (
-                'Extract Recipe'
-              )}
+              Extract Recipe
             </button>
           </div>
         </div>

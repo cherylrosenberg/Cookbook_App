@@ -6,3 +6,57 @@ body {
   @apply bg-gradient-main min-h-screen;
 }
 
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c8e6c9;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a5d6a7;
+}
+
+/* Carrot loading animation */
+@keyframes carrot-draw {
+  0% {
+    stroke-dashoffset: 200;
+  }
+  50% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 200;
+  }
+}
+
+.carrot-path {
+  animation: carrot-draw 2.5s ease-in-out infinite;
+}
+
+.carrot-path-slow {
+  animation: carrot-draw 4s ease-in-out infinite;
+}
+
+/* Loading text flash animation - same speed as carrot */
+@keyframes text-flash {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  animation: text-flash 4s ease-in-out infinite;
+}
+

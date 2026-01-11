@@ -35,7 +35,7 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
+      className="bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
     >
       <div className="p-4 flex-1">
         <h3 className="font-semibold text-gray-800 text-lg mb-3 line-clamp-2 min-h-[3rem]">
