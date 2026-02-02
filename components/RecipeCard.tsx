@@ -10,6 +10,57 @@ interface RecipeCardProps {
   onDelete: (id: string) => void
 }
 
+const PLACEHOLDER_GRADIENTS = [
+  'bg-placeholder-1',
+  'bg-placeholder-2',
+  'bg-placeholder-3',
+  'bg-placeholder-4',
+  'bg-placeholder-5',
+  'bg-placeholder-6',
+] as const
+
+function hashId(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) {
+    h = (h << 5) - h + id.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h)
+}
+
+function getEmojiForRecipe(recipe: Recipe): string {
+  const text = `${recipe.title} ${(recipe.tags || []).join(' ')}`.toLowerCase()
+  const map: [RegExp, string][] = [
+    [/pasta|noodle|spaghetti|lasagna/, '🍝'],
+    [/chicken|poultry/, '🍗'],
+    [/beef|steak|burger/, '🥩'],
+    [/soup|broth/, '🍲'],
+    [/salad/, '🥗'],
+    [/cake|cupcake/, '🍰'],
+    [/cookie|brownie/, '🍪'],
+    [/bread|roll|bagel/, '🍞'],
+    [/fish|salmon|tuna|seafood/, '🐟'],
+    [/dessert|ice cream|pudding/, '🍨'],
+    [/breakfast|pancake|waffle|egg/, '🥞'],
+    [/pizza/, '🍕'],
+    [/taco|burrito|mexican/, '🌮'],
+    [/sushi|rice/, '🍣'],
+    [/curry|indian|thai/, '🍛'],
+    [/apple|pie|fruit/, '🥧'],
+    [/coffee|tea/, '☕'],
+    [/smoothie|juice/, '🥤'],
+  ]
+  for (const [re, emoji] of map) {
+    if (re.test(text)) return emoji
+  }
+  return '🍽️'
+}
+
+function getGradientClassForRecipe(recipe: Recipe): string {
+  const index = hashId(recipe.id) % PLACEHOLDER_GRADIENTS.length
+  return PLACEHOLDER_GRADIENTS[index]
+}
+
 export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
   const router = useRouter()
 
@@ -25,20 +76,31 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
   const displayTags = recipe.tags.slice(0, 3)
   const remainingTags = recipe.tags.length - 3
 
-  // Calculate total_time if not provided
   const totalTime = calculateTotalTime(
     recipe.prep_time,
     recipe.cook_time,
     recipe.total_time
   )
 
+  const emoji = getEmojiForRecipe(recipe)
+  const gradientClass = getGradientClassForRecipe(recipe)
+
   return (
     <div
       onClick={handleClick}
-      className="bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
+      className="group bg-white rounded-xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col h-full overflow-hidden"
     >
-      <div className="p-4 flex-1">
-        <h3 className="font-semibold text-gray-800 text-lg mb-3 line-clamp-2 min-h-[3rem]">
+      {/* Image placeholder with emoji and gradient */}
+      <div
+        className={`${gradientClass} h-28 flex items-center justify-center shrink-0`}
+      >
+        <span className="text-5xl" role="img" aria-hidden>
+          {emoji}
+        </span>
+      </div>
+
+      <div className="p-5 md:p-6 flex-1 flex flex-col">
+        <h3 className="font-bold text-gray-800 text-xl mb-3 line-clamp-2 min-h-[2.75rem]">
           {recipe.title}
         </h3>
 
@@ -56,7 +118,7 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
         </div>
 
         {recipe.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mt-auto">
             {displayTags.map((tag, index) => (
               <span
                 key={index}
@@ -74,10 +136,10 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
         )}
       </div>
 
-      <div className="p-4 border-t border-gray-200 flex justify-end">
+      <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
         <button
           onClick={handleDelete}
-          className="text-red-600 hover:text-red-800 p-2 rounded transition-colors"
+          className="text-gray-500 hover:text-gray-700 p-2 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none"
           aria-label="Delete recipe"
         >
           <Trash2 className="w-5 h-5" />
@@ -86,4 +148,3 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
     </div>
   )
 }
-

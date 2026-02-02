@@ -4,28 +4,27 @@ import { RecipeInput } from '@/lib/supabase'
 
 // Create Supabase client for server-side API routes
 // Support both anon key (legacy) and publishable key (new format)
-const supabaseUrl = process.env.SUPABASE_URL || ''
-const supabaseAnonKey = 
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.SUPABASE_ANON_KEY || 
-  ''
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables in API route. Please set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY) in .env.local')
+// Use placeholders when env is missing so build (static analysis) does not throw
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co'
+  const supabaseAnonKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    'placeholder-key'
+  return createClient(supabaseUrl, supabaseAnonKey)
 }
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // GET all recipes
 export async function GET() {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!process.env.SUPABASE_URL || (!process.env.SUPABASE_PUBLISHABLE_KEY && !process.env.SUPABASE_ANON_KEY)) {
       return NextResponse.json(
         { error: 'Supabase credentials not configured. Please set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY) in .env.local' },
         { status: 500 }
       )
     }
 
+    const supabase = getSupabase()
     const { data, error } = await supabase
       .from('recipes')
       .select('*')
@@ -49,13 +48,14 @@ export async function GET() {
 // POST create new recipe
 export async function POST(request: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!process.env.SUPABASE_URL || (!process.env.SUPABASE_PUBLISHABLE_KEY && !process.env.SUPABASE_ANON_KEY)) {
       return NextResponse.json(
         { error: 'Supabase credentials not configured. Please set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY) in .env.local' },
         { status: 500 }
       )
     }
 
+    const supabase = getSupabase()
     const recipe: RecipeInput = await request.json()
 
     // Validate required fields

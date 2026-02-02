@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
 import RecipeDetailView from '@/components/RecipeDetailView'
@@ -16,11 +16,7 @@ export default function RecipePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchRecipe()
-  }, [recipeId])
-
-  const fetchRecipe = async () => {
+  const fetchRecipe = useCallback(async () => {
     try {
       const response = await fetch(`/api/recipes/${recipeId}`)
       if (response.ok) {
@@ -79,7 +75,11 @@ export default function RecipePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [recipeId, router])
+
+  useEffect(() => {
+    fetchRecipe()
+  }, [fetchRecipe])
 
   const handleRecipeUpdated = () => {
     fetchRecipe()

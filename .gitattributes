@@ -1,0 +1,2 @@
+# Use LF for all text files so line endings are consistent across Mac and Windows
+* text=auto eol=lf

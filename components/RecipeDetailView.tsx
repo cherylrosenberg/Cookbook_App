@@ -3,8 +3,59 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
-import { ArrowLeft, Edit, Clock, Users, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Edit, Clock, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
 import { scaleQuantity as scaleQuantityUtil, calculateTotalTime } from '@/lib/quantity-parser'
+
+const PLACEHOLDER_GRADIENTS = [
+  'bg-placeholder-1',
+  'bg-placeholder-2',
+  'bg-placeholder-3',
+  'bg-placeholder-4',
+  'bg-placeholder-5',
+  'bg-placeholder-6',
+] as const
+
+function hashId(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) {
+    h = (h << 5) - h + id.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h)
+}
+
+function getEmojiForRecipe(recipe: Recipe): string {
+  const text = `${recipe.title} ${(recipe.tags || []).join(' ')}`.toLowerCase()
+  const map: [RegExp, string][] = [
+    [/pasta|noodle|spaghetti|lasagna/, '🍝'],
+    [/chicken|poultry/, '🍗'],
+    [/beef|steak|burger/, '🥩'],
+    [/soup|broth/, '🍲'],
+    [/salad/, '🥗'],
+    [/cake|cupcake/, '🍰'],
+    [/cookie|brownie/, '🍪'],
+    [/bread|roll|bagel/, '🍞'],
+    [/fish|salmon|tuna|seafood/, '🐟'],
+    [/dessert|ice cream|pudding/, '🍨'],
+    [/breakfast|pancake|waffle|egg/, '🥞'],
+    [/pizza/, '🍕'],
+    [/taco|burrito|mexican/, '🌮'],
+    [/sushi|rice/, '🍣'],
+    [/curry|indian|thai/, '🍛'],
+    [/apple|pie|fruit/, '🥧'],
+    [/coffee|tea/, '☕'],
+    [/smoothie|juice/, '🥤'],
+  ]
+  for (const [re, emoji] of map) {
+    if (re.test(text)) return emoji
+  }
+  return '🍽️'
+}
+
+function getGradientClassForRecipe(recipe: Recipe): string {
+  const index = hashId(recipe.id) % PLACEHOLDER_GRADIENTS.length
+  return PLACEHOLDER_GRADIENTS[index]
+}
 
 interface RecipeDetailViewProps {
   recipe: Recipe
@@ -35,14 +86,26 @@ export default function RecipeDetailView({
     recipe.total_time
   )
 
+  const emoji = getEmojiForRecipe(recipe)
+  const gradientClass = getGradientClassForRecipe(recipe)
+
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
+        {/* Header image - same as recipe card placeholder */}
+        <div
+          className={`${gradientClass} h-40 md:h-48 -mx-4 md:-mx-6 lg:-mx-8 mb-6 rounded-xl flex items-center justify-center overflow-hidden`}
+        >
+          <span className="text-6xl md:text-7xl" role="img" aria-hidden>
+            {emoji}
+          </span>
+        </div>
+
         {/* Header */}
         <div className="mb-6">
           <button
             onClick={() => router.push('/')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4 font-medium"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Back to Library</span>
@@ -52,13 +115,22 @@ export default function RecipeDetailView({
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 flex-1">
               {recipe.title}
             </h1>
-            <button
-              onClick={onEdit}
-              className="text-forest-green hover:opacity-80 p-2"
-              aria-label="Edit recipe"
-            >
-              <Edit className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={onEdit}
+                className="text-forest-green hover:opacity-80 p-2 rounded-lg transition-opacity"
+                aria-label="Edit recipe"
+              >
+                <Edit className="w-6 h-6" />
+              </button>
+              <button
+                onClick={onDelete}
+                className="text-forest-green hover:opacity-80 p-2 rounded-lg transition-opacity"
+                aria-label="Delete recipe"
+              >
+                <Trash2 className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           {recipe.source_url && (
@@ -66,7 +138,7 @@ export default function RecipeDetailView({
               href={recipe.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-forest-green hover:underline flex items-center gap-1 text-sm mb-4"
+              className="text-forest-green hover:underline flex items-center gap-1 text-sm mb-4 font-normal"
             >
               <ExternalLink className="w-4 h-4" />
               View Original Recipe
@@ -78,7 +150,7 @@ export default function RecipeDetailView({
               {recipe.tags.map((tag, index) => (
                 <span
                   key={index}
-                  className="bg-light-green text-forest-green text-sm px-3 py-1 rounded-full"
+                  className="bg-white text-gray-800 text-sm font-normal px-3 py-1.5 rounded-full border border-gray-200"
                 >
                   {tag}
                 </span>
@@ -89,31 +161,31 @@ export default function RecipeDetailView({
 
         {/* Time Information */}
         {(recipe.prep_time || recipe.cook_time || totalTime) && (
-          <div className="bg-light-green rounded-lg p-4 mb-6">
+          <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {recipe.prep_time && (
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Prep Time</div>
-                  <div className="flex items-center gap-2 text-forest-green font-semibold">
-                    <Clock className="w-5 h-5" />
+                  <div className="text-sm text-gray-600 mb-1 font-medium tracking-[0.5px] uppercase">Prep Time</div>
+                  <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                    <Clock className="w-5 h-5 text-gray-500" />
                     <span>{recipe.prep_time}</span>
                   </div>
                 </div>
               )}
               {recipe.cook_time && (
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Cook Time</div>
-                  <div className="flex items-center gap-2 text-forest-green font-semibold">
-                    <Clock className="w-5 h-5" />
+                  <div className="text-sm text-gray-600 mb-1 font-medium tracking-[0.5px] uppercase">Cook Time</div>
+                  <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                    <Clock className="w-5 h-5 text-gray-500" />
                     <span>{recipe.cook_time}</span>
                   </div>
                 </div>
               )}
               {totalTime && (
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Total Time</div>
-                  <div className="flex items-center gap-2 text-forest-green font-semibold">
-                    <Clock className="w-5 h-5" />
+                  <div className="text-sm text-gray-600 mb-1 font-medium tracking-[0.5px] uppercase">Total Time</div>
+                  <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                    <Clock className="w-5 h-5 text-gray-500" />
                     <span>{totalTime}</span>
                   </div>
                 </div>
@@ -123,16 +195,16 @@ export default function RecipeDetailView({
         )}
 
         {/* Serving Size Adjuster */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6 shadow-md">
+        <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-gray-600 mb-1">Servings</div>
+              <div className="text-sm text-gray-600 mb-1 font-medium tracking-[0.5px] uppercase">Servings</div>
               <div className="flex items-center gap-3">
                 <span className="text-3xl font-bold text-forest-green">
                   {scaledServings}
                 </span>
                 {servingMultiplier !== 1 && (
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 font-normal">
                     (original: {originalServings})
                   </span>
                 )}
@@ -158,8 +230,8 @@ export default function RecipeDetailView({
         </div>
 
         {/* Ingredients */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6 shadow-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Ingredients</h2>
+        <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 tracking-[0.5px]">Ingredients</h2>
           {/* Render ingredients - handle normalization */}
           {(() => {
             // Normalize ingredients to ensure it's always an array
@@ -205,10 +277,10 @@ export default function RecipeDetailView({
             
             if (!Array.isArray(ingredients) || ingredients.length === 0) {
               return (
-                <div className="text-gray-500 py-4">
+                <div className="text-gray-500 py-4 font-normal">
                   <p>No ingredients available</p>
                   {process.env.NODE_ENV === 'development' && (
-                    <pre className="text-xs mt-2 bg-gray-100 p-2 rounded">
+                    <pre className="text-xs mt-2 bg-gray-100 p-2 rounded-xl font-normal">
                       Debug: {JSON.stringify(recipe.ingredients, null, 2)}
                     </pre>
                   )}
@@ -230,21 +302,22 @@ export default function RecipeDetailView({
                   : []
               
               const sectionName = section.section || 'Ingredients'
+              const isLast = sectionIndex === ingredients.length - 1
               
               if (items.length === 0) {
                 return (
-                  <div key={sectionIndex} className="mb-6 last:mb-0">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                  <div key={sectionIndex} className={`pb-6 ${!isLast ? 'mb-6 border-b border-gray-200' : ''}`}>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-3 tracking-[0.5px]">
                       {sectionName}
                     </h3>
-                    <p className="text-gray-500 text-sm">No items in this section</p>
+                    <p className="text-gray-500 text-sm font-normal">No items in this section</p>
                   </div>
                 )
               }
               
               return (
-                <div key={sectionIndex} className="mb-6 last:mb-0">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                <div key={sectionIndex} className={`pb-6 ${!isLast ? 'mb-6 border-b border-gray-200' : ''}`}>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 tracking-[0.5px]">
                     {sectionName}
                   </h3>
                   <ul className="space-y-2">
@@ -263,7 +336,7 @@ export default function RecipeDetailView({
                           : quantity ? scaleQuantityUtil(quantity, servingMultiplier) : ''
                       
                       return (
-                        <li key={itemIndex} className="flex gap-2">
+                        <li key={itemIndex} className="flex gap-2 font-normal">
                           {scaledQuantity && (
                             <span className="font-semibold text-forest-green min-w-[80px]">
                               {scaledQuantity}
@@ -281,18 +354,18 @@ export default function RecipeDetailView({
         </div>
 
         {/* Instructions */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6 shadow-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Instructions</h2>
+        <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 tracking-[0.5px]">Instructions</h2>
           <ol className="space-y-4">
             {recipe.instructions.map((instruction, index) => {
               // Remove leading numbers and periods/dots (e.g., "1. ", "2.", "3) ", etc.)
               const cleanedInstruction = instruction.replace(/^\d+[\.\)]\s*/, '').trim()
               return (
                 <li key={index} className="flex gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 bg-forest-green text-white rounded-full flex items-center justify-center font-bold">
+                  <span className="flex-shrink-0 w-8 h-8 bg-forest-green text-white rounded-full flex items-center justify-center font-bold text-sm">
                     {index + 1}
                   </span>
-                  <span className="text-gray-700 flex-1 pt-1">{cleanedInstruction}</span>
+                  <span className="text-gray-700 flex-1 pt-1 font-normal">{cleanedInstruction}</span>
                 </li>
               )
             })}
@@ -301,22 +374,11 @@ export default function RecipeDetailView({
 
         {/* Notes */}
         {recipe.notes && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Notes</h2>
-            <p className="text-gray-700 whitespace-pre-wrap">{recipe.notes}</p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-6 shadow-sm">
+            <h2 className="text-xl font-bold text-gray-800 mb-2 tracking-[0.5px]">Notes</h2>
+            <p className="text-gray-700 whitespace-pre-wrap font-normal">{recipe.notes}</p>
           </div>
         )}
-
-        {/* Delete Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={onDelete}
-            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-          >
-            <Trash2 className="w-5 h-5" />
-            Delete Recipe
-          </button>
-        </div>
       </div>
     </div>
   )

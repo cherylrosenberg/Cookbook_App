@@ -4,23 +4,28 @@ import { RecipeInput } from '@/lib/supabase'
 
 // Create Supabase client for server-side API routes
 // Support both anon key (legacy) and publishable key (new format)
-const supabaseUrl = process.env.SUPABASE_URL || ''
-const supabaseAnonKey = 
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.SUPABASE_ANON_KEY || 
-  ''
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Use placeholders when env is missing so build (static analysis) does not throw
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co'
+  const supabaseAnonKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    'placeholder-key'
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
 
 // GET single recipe
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
+    const supabase = getSupabase()
     const { data, error } = await supabase
       .from('recipes')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -46,9 +51,11 @@ export async function GET(
 // PUT update recipe
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
+    const supabase = getSupabase()
     const recipe: RecipeInput = await request.json()
 
     // Validate required fields
@@ -76,7 +83,7 @@ export async function PUT(
         source_url: recipe.source_url || null,
         notes: recipe.notes || null,
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -103,13 +110,15 @@ export async function PUT(
 // DELETE recipe
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
+    const supabase = getSupabase()
     const { error } = await supabase
       .from('recipes')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       throw error

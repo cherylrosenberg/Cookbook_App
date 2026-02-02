@@ -69,7 +69,7 @@ export default function RecipeInputModal({
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-2xl p-12 flex flex-col items-center justify-center">
+        <div className="bg-white rounded-xl shadow-2xl p-12 flex flex-col items-center justify-center">
           <CarrotLoading text="Extracting recipe" />
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function RecipeInputModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-50 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-50 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
@@ -96,7 +96,7 @@ export default function RecipeInputModal({
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setInputType('url')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-colors ${
                 inputType === 'url'
                   ? 'bg-forest-green text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -106,7 +106,7 @@ export default function RecipeInputModal({
             </button>
             <button
               onClick={() => setInputType('text')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-colors ${
                 inputType === 'text'
                   ? 'bg-forest-green text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -123,7 +123,7 @@ export default function RecipeInputModal({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Paste recipe URL here..."
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-forest-green"
+              className="w-full p-3 border border-gray-300 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-forest-green"
               disabled={loading}
             />
           ) : (
@@ -132,14 +132,14 @@ export default function RecipeInputModal({
               onChange={(e) => setContent(e.target.value)}
               placeholder="Paste recipe text here..."
               rows={10}
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-forest-green resize-none"
+              className="w-full p-3 border border-gray-300 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-forest-green resize-none"
               disabled={loading}
             />
           )}
 
           {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
               {error}
             </div>
           )}
@@ -148,7 +148,7 @@ export default function RecipeInputModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 py-2 px-4 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={loading}
             >
               Cancel
@@ -156,7 +156,7 @@ export default function RecipeInputModal({
             <button
               onClick={handleExtract}
               disabled={loading || !content.trim()}
-              className="flex-1 bg-forest-green text-white py-2 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-forest-green text-white py-2 px-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Extract Recipe
             </button>
