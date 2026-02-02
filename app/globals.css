@@ -25,28 +25,7 @@ body {
   background: #a3a3a3;
 }
 
-/* Carrot loading animation */
-@keyframes carrot-draw {
-  0% {
-    stroke-dashoffset: 200;
-  }
-  50% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: 200;
-  }
-}
-
-.carrot-path {
-  animation: carrot-draw 2.5s ease-in-out infinite;
-}
-
-.carrot-path-slow {
-  animation: carrot-draw 4s ease-in-out infinite;
-}
-
-/* Loading text flash animation - same speed as carrot */
+/* Loading text flash animation */
 @keyframes text-flash {
   0%, 100% {
     opacity: 0.3;
@@ -58,5 +37,19 @@ body {
 
 .loading-text {
   animation: text-flash 4s ease-in-out infinite;
+}
+
+/* Overlay fade-in */
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.overlay-fade-in {
+  animation: overlay-fade-in 0.2s ease-out forwards;
 }
 

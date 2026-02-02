@@ -1,8 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import CarrotLoading from './CarrotLoading'
+
+const LOG_ENDPOINT = 'http://127.0.0.1:7242/ingest/d6debe8f-02b3-4a7b-9eb1-f9f8a0f0405e'
+function debugLog(location: string, message: string, data: Record<string, unknown>, hypothesisId: string) {
+  fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, message, data: { ...data, hypothesisId }, timestamp: Date.now(), sessionId: 'debug-session' }) }).catch(() => {})
+}
 
 interface RecipeInputModalProps {
   onClose: () => void
@@ -17,6 +23,31 @@ export default function RecipeInputModal({
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!loading || !overlayRef.current) return
+    const el = overlayRef.current
+    const rect = el.getBoundingClientRect()
+    const parent = el.parentElement
+    const isInBody = parent === document.body
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const topmost = typeof document !== 'undefined' ? document.elementFromPoint(cx, cy) : null
+    const overlayIsTopmost = topmost && (topmost === el || el.contains(topmost))
+    // #region agent log
+    debugLog('RecipeInputModal.tsx:overlay-mount', 'Overlay mounted, measuring', {
+      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+      parentTag: parent?.tagName ?? null,
+      isInBody,
+      viewportW: typeof window !== 'undefined' ? window.innerWidth : 0,
+      viewportH: typeof window !== 'undefined' ? window.innerHeight : 0,
+      offsetParentTag: el.offsetParent?.tagName ?? null,
+      topmostTag: topmost?.tagName ?? null,
+      overlayIsTopmost,
+    }, 'B,E,C')
+    // #endregion
+  }, [loading])
 
   const handleExtract = async () => {
     if (!content.trim()) {
@@ -65,15 +96,63 @@ export default function RecipeInputModal({
     }
   }
 
-  // Show full-screen loading state during extraction
+  // Show full-screen loading overlay during extraction (portaled to body so it's truly full viewport)
   if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-2xl p-12 flex flex-col items-center justify-center">
-          <CarrotLoading text="Extracting recipe" />
+    const documentDefined = typeof document !== 'undefined'
+    const willUsePortal = documentDefined
+    // #region agent log
+    debugLog('RecipeInputModal.tsx:loading-block', 'Rendering overlay', { loading, documentDefined, willUsePortal }, 'A,D')
+    // #endregion
+    const overlay = (
+      <div
+        ref={overlayRef}
+        className="overlay-fade-in fixed flex items-center justify-center"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100dvh',
+          minWidth: '100vw',
+          minHeight: '100dvh',
+          zIndex: 2147483647,
+          isolation: 'isolate',
+          transform: 'translateZ(0)',
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <div
+          className="flex flex-col items-center text-center"
+          style={{
+            backgroundColor: 'white',
+            padding: 64,
+            borderRadius: 28,
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <CarrotLoading size="cardLarge" noLabel />
+          <h3 style={{ fontSize: 24, fontWeight: 600, marginTop: 24, marginBottom: 8 }}>
+            Extracting Recipe
+          </h3>
+          <p className="text-gray-500" style={{ fontSize: 16 }}>
+            This will just take a moment...
+          </p>
         </div>
       </div>
     )
+    if (typeof document !== 'undefined') {
+      // #region agent log
+      debugLog('RecipeInputModal.tsx:portal-return', 'Using createPortal to body', {}, 'A')
+      // #endregion
+      return createPortal(overlay, document.body)
+    }
+    // #region agent log
+    debugLog('RecipeInputModal.tsx:no-portal', 'document undefined, returning overlay in place', {}, 'A')
+    // #endregion
+    return overlay
   }
 
   return (
