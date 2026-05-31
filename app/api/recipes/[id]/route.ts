@@ -90,7 +90,7 @@ export async function PUT(
       throw error
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(normalizeRecipeIngredients(data))
   } catch (error) {
     console.error('Error updating recipe:', error)
     return NextResponse.json(

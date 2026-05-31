@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       throw error
     }
 
-    return NextResponse.json(data, { status: 201 })
+    return NextResponse.json(normalizeRecipeIngredients(data), { status: 201 })
   } catch (error) {
     console.error('Error creating recipe:', error)
     return NextResponse.json(
