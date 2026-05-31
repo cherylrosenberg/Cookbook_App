@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { RecipeInput } from '@/lib/supabase'
-
-// Create Supabase client for server-side API routes
-// Support both anon key (legacy) and publishable key (new format)
-// Use placeholders when env is missing so build (static analysis) does not throw
-function getSupabase() {
-  const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co'
-  const supabaseAnonKey =
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    'placeholder-key'
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
+import {
+  normalizeIngredients,
+  normalizeRecipeIngredients,
+} from '@/lib/recipe-normalize'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 // GET single recipe
 export async function GET(
@@ -21,7 +13,7 @@ export async function GET(
 ) {
   const { id } = await params
   try {
-    const supabase = getSupabase()
+    const supabase = createServerSupabaseClient()
     const { data, error } = await supabase
       .from('recipes')
       .select('*')
@@ -38,7 +30,7 @@ export async function GET(
       throw error
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(normalizeRecipeIngredients(data))
   } catch (error) {
     console.error('Error fetching recipe:', error)
     return NextResponse.json(
@@ -55,8 +47,9 @@ export async function PUT(
 ) {
   const { id } = await params
   try {
-    const supabase = getSupabase()
+    const supabase = createServerSupabaseClient()
     const recipe: RecipeInput = await request.json()
+    recipe.ingredients = normalizeIngredients(recipe.ingredients)
 
     // Validate required fields
     if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
@@ -114,7 +107,7 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    const supabase = getSupabase()
+    const supabase = createServerSupabaseClient()
     const { error } = await supabase
       .from('recipes')
       .delete()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
+import { Recipe } from '@/lib/supabase'
 import RecipeCard from '@/components/RecipeCard'
 import RecipeInputModal from '@/components/RecipeInputModal'
 import SearchAndFilters from '@/components/SearchAndFilters'
@@ -77,72 +77,20 @@ export default function Home() {
     try {
       setError(null)
       setLoading(true)
-      console.log('[fetchRecipes] Starting fetch...')
-      
+
       const response = await fetch('/api/recipes')
-      console.log('[fetchRecipes] Response received:', response.status, response.statusText)
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('[fetchRecipes] Error response:', errorData)
         throw new Error(errorData.error || `HTTP ${response.status}`)
       }
-      
+
       const data = await response.json()
-      console.log('[fetchRecipes] Data received:', data)
-      
-      // Normalize recipes - ensure ingredients is always an array
-      // Handle different data structures from Gemini: { optional: [], sections: [] }
-      const normalizedData = Array.isArray(data) ? data.map((recipe: Recipe) => {
-        if (recipe.ingredients) {
-          // Parse if string
-          if (typeof recipe.ingredients === 'string') {
-            try {
-              recipe.ingredients = JSON.parse(recipe.ingredients)
-            } catch (e) {
-              console.error('Failed to parse ingredients for recipe:', recipe.id, e)
-              recipe.ingredients = []
-            }
-          }
-          
-          // Handle the actual structure: { optional: [], sections: [] }
-          // Type guard to check if it's RawIngredients format
-          if (recipe.ingredients && typeof recipe.ingredients === 'object' && !Array.isArray(recipe.ingredients)) {
-            const rawIngredients = recipe.ingredients as RawIngredients
-            const normalized: IngredientSection[] = []
-            
-            if (Array.isArray(rawIngredients.sections)) {
-              normalized.push(...rawIngredients.sections)
-            }
-            
-            if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
-              normalized.push({
-                section: 'Optional ingredients',
-                items: rawIngredients.optional
-              })
-            }
-            
-            recipe.ingredients = normalized.length > 0 ? normalized : []
-          }
-          
-          if (!Array.isArray(recipe.ingredients)) {
-            console.warn('Ingredients is not an array for recipe:', recipe.id, recipe.ingredients)
-            recipe.ingredients = []
-          }
-        } else {
-          recipe.ingredients = []
-        }
-        return recipe
-      }) : []
-      
-      setRecipes(normalizedData)
-      console.log('[fetchRecipes] Recipes set, setting loading to false')
+      setRecipes(Array.isArray(data) ? data : [])
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch recipes'
       setError(errorMessage)
-      console.error('[fetchRecipes] Error caught:', error)
     } finally {
-      console.log('[fetchRecipes] Finally block - setting loading to false')
       setLoading(false)
     }
   }

@@ -1,27 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+// Types for recipes (DB and API). Server client: lib/supabase-server.ts
 
-// For API routes (server-side), use regular env vars
-// For client-side, use NEXT_PUBLIC_ prefix
-// Support both anon key (legacy) and publishable key (new format)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || ''
-const supabaseAnonKey = 
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-  process.env.SUPABASE_ANON_KEY || 
-  ''
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables. Please set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY) in .env.local')
-}
-
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-)
-
-// Types
-// Recipe from database may have ingredients in various formats
 export interface Recipe {
   id: string
   user_id: string | null
@@ -30,7 +8,7 @@ export interface Recipe {
   prep_time: string | null
   cook_time: string | null
   total_time: string | null
-  ingredients: IngredientSection[] | RawIngredients | string
+  ingredients: IngredientSection[]
   instructions: string[]
   tags: string[]
   source_url: string | null
@@ -55,7 +33,7 @@ export interface RawIngredients {
   optional?: IngredientItem[]
 }
 
-// Ingredients can be in multiple formats:
+// Ingredients can be in multiple formats before normalization:
 // 1. Normalized array format: IngredientSection[]
 // 2. Raw API format: { sections: [], optional: [] }
 // 3. String (JSON) that needs parsing
@@ -73,4 +51,3 @@ export interface RecipeInput {
   source_url?: string
   notes?: string
 }
-

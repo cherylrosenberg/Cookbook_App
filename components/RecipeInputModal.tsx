@@ -1,14 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import CarrotLoading from './CarrotLoading'
-
-const LOG_ENDPOINT = 'http://127.0.0.1:7242/ingest/d6debe8f-02b3-4a7b-9eb1-f9f8a0f0405e'
-function debugLog(location: string, message: string, data: Record<string, unknown>, hypothesisId: string) {
-  fetch(LOG_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, message, data: { ...data, hypothesisId }, timestamp: Date.now(), sessionId: 'debug-session' }) }).catch(() => {})
-}
 
 interface RecipeInputModalProps {
   onClose: () => void
@@ -23,31 +18,6 @@ export default function RecipeInputModal({
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!loading || !overlayRef.current) return
-    const el = overlayRef.current
-    const rect = el.getBoundingClientRect()
-    const parent = el.parentElement
-    const isInBody = parent === document.body
-    const cx = rect.width / 2
-    const cy = rect.height / 2
-    const topmost = typeof document !== 'undefined' ? document.elementFromPoint(cx, cy) : null
-    const overlayIsTopmost = topmost && (topmost === el || el.contains(topmost))
-    // #region agent log
-    debugLog('RecipeInputModal.tsx:overlay-mount', 'Overlay mounted, measuring', {
-      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
-      parentTag: parent?.tagName ?? null,
-      isInBody,
-      viewportW: typeof window !== 'undefined' ? window.innerWidth : 0,
-      viewportH: typeof window !== 'undefined' ? window.innerHeight : 0,
-      offsetParentTag: el.offsetParent?.tagName ?? null,
-      topmostTag: topmost?.tagName ?? null,
-      overlayIsTopmost,
-    }, 'B,E,C')
-    // #endregion
-  }, [loading])
 
   const handleExtract = async () => {
     if (!content.trim()) {
@@ -59,7 +29,6 @@ export default function RecipeInputModal({
     setError(null)
 
     try {
-      // Extract recipe
       const extractResponse = await fetch('/api/extract-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,7 +45,6 @@ export default function RecipeInputModal({
 
       const recipe = await extractResponse.json()
 
-      // Save recipe
       const saveResponse = await fetch('/api/recipes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,7 +55,6 @@ export default function RecipeInputModal({
         throw new Error('Failed to save recipe')
       }
 
-      // Success
       onRecipeAdded()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -96,16 +63,9 @@ export default function RecipeInputModal({
     }
   }
 
-  // Show full-screen loading overlay during extraction (portaled to body so it's truly full viewport)
   if (loading) {
-    const documentDefined = typeof document !== 'undefined'
-    const willUsePortal = documentDefined
-    // #region agent log
-    debugLog('RecipeInputModal.tsx:loading-block', 'Rendering overlay', { loading, documentDefined, willUsePortal }, 'A,D')
-    // #endregion
     const overlay = (
       <div
-        ref={overlayRef}
         className="overlay-fade-in fixed flex items-center justify-center"
         style={{
           position: 'fixed',
@@ -144,14 +104,8 @@ export default function RecipeInputModal({
       </div>
     )
     if (typeof document !== 'undefined') {
-      // #region agent log
-      debugLog('RecipeInputModal.tsx:portal-return', 'Using createPortal to body', {}, 'A')
-      // #endregion
       return createPortal(overlay, document.body)
     }
-    // #region agent log
-    debugLog('RecipeInputModal.tsx:no-portal', 'document undefined, returning overlay in place', {}, 'A')
-    // #endregion
     return overlay
   }
 
@@ -159,7 +113,6 @@ export default function RecipeInputModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-gray-50 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          {/* Header */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Add Recipe</h2>
             <button
@@ -171,7 +124,6 @@ export default function RecipeInputModal({
             </button>
           </div>
 
-          {/* Toggle */}
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setInputType('url')}
@@ -195,7 +147,6 @@ export default function RecipeInputModal({
             </button>
           </div>
 
-          {/* Input */}
           {inputType === 'url' ? (
             <input
               type="url"
@@ -216,14 +167,12 @@ export default function RecipeInputModal({
             />
           )}
 
-          {/* Error */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
               {error}
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -245,4 +194,3 @@ export default function RecipeInputModal({
     </div>
   )
 }
-

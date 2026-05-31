@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
+import { Recipe } from '@/lib/supabase'
 import RecipeDetailView from '@/components/RecipeDetailView'
 import EditRecipeForm from '@/components/EditRecipeForm'
 import CarrotLoading from '@/components/CarrotLoading'
@@ -21,50 +21,6 @@ export default function RecipePage() {
       const response = await fetch(`/api/recipes/${recipeId}`)
       if (response.ok) {
         const data = await response.json()
-        
-        // Normalize ingredients - handle different data structures
-        // Supabase JSONB might return as string in some cases
-        // Gemini may return: { optional: [], sections: [] } instead of array of sections
-        if (data.ingredients) {
-          if (typeof data.ingredients === 'string') {
-            try {
-              data.ingredients = JSON.parse(data.ingredients)
-            } catch (e) {
-              console.error('Failed to parse ingredients:', e)
-              data.ingredients = []
-            }
-          }
-          
-          // Handle the actual structure from Gemini: { optional: [], sections: [] }
-          if (data.ingredients && typeof data.ingredients === 'object' && !Array.isArray(data.ingredients)) {
-            // Type guard to check if it's RawIngredients format
-            const rawIngredients = data.ingredients as RawIngredients
-            const normalized: IngredientSection[] = []
-            
-            // Add sections array
-            if (Array.isArray(rawIngredients.sections)) {
-              normalized.push(...rawIngredients.sections)
-            }
-            
-            // Add optional ingredients as a section
-            if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
-              normalized.push({
-                section: 'Optional ingredients',
-                items: rawIngredients.optional
-              })
-            }
-            
-            data.ingredients = normalized.length > 0 ? normalized : []
-          }
-          
-          if (!Array.isArray(data.ingredients)) {
-            console.warn('Ingredients is not an array after normalization, defaulting to empty array:', data.ingredients)
-            data.ingredients = []
-          }
-        } else {
-          data.ingredients = []
-        }
-        
         setRecipe(data)
       } else {
         router.push('/')

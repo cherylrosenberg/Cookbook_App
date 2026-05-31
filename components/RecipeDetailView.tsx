@@ -2,60 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Recipe, RawIngredients, IngredientSection } from '@/lib/supabase'
+import { Recipe } from '@/lib/supabase'
 import { ArrowLeft, Edit, Clock, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
 import { scaleQuantity as scaleQuantityUtil, calculateTotalTime } from '@/lib/quantity-parser'
-
-const PLACEHOLDER_GRADIENTS = [
-  'bg-placeholder-1',
-  'bg-placeholder-2',
-  'bg-placeholder-3',
-  'bg-placeholder-4',
-  'bg-placeholder-5',
-  'bg-placeholder-6',
-] as const
-
-function hashId(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) {
-    h = (h << 5) - h + id.charCodeAt(i)
-    h |= 0
-  }
-  return Math.abs(h)
-}
-
-function getEmojiForRecipe(recipe: Recipe): string {
-  const text = `${recipe.title} ${(recipe.tags || []).join(' ')}`.toLowerCase()
-  const map: [RegExp, string][] = [
-    [/pasta|noodle|spaghetti|lasagna/, '🍝'],
-    [/chicken|poultry/, '🍗'],
-    [/beef|steak|burger/, '🥩'],
-    [/soup|broth/, '🍲'],
-    [/salad/, '🥗'],
-    [/cake|cupcake/, '🍰'],
-    [/cookie|brownie/, '🍪'],
-    [/bread|roll|bagel/, '🍞'],
-    [/fish|salmon|tuna|seafood/, '🐟'],
-    [/dessert|ice cream|pudding/, '🍨'],
-    [/breakfast|pancake|waffle|egg/, '🥞'],
-    [/pizza/, '🍕'],
-    [/taco|burrito|mexican/, '🌮'],
-    [/sushi|rice/, '🍣'],
-    [/curry|indian|thai/, '🍛'],
-    [/apple|pie|fruit/, '🥧'],
-    [/coffee|tea/, '☕'],
-    [/smoothie|juice/, '🥤'],
-  ]
-  for (const [re, emoji] of map) {
-    if (re.test(text)) return emoji
-  }
-  return '🍽️'
-}
-
-function getGradientClassForRecipe(recipe: Recipe): string {
-  const index = hashId(recipe.id) % PLACEHOLDER_GRADIENTS.length
-  return PLACEHOLDER_GRADIENTS[index]
-}
+import {
+  getEmojiForRecipe,
+  getGradientClassForRecipe,
+} from '@/lib/recipe-display'
 
 interface RecipeDetailViewProps {
   recipe: Recipe
@@ -232,63 +185,12 @@ export default function RecipeDetailView({
         {/* Ingredients */}
         <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 tracking-[0.5px]">Ingredients</h2>
-          {/* Render ingredients - handle normalization */}
-          {(() => {
-            // Normalize ingredients to ensure it's always an array
-            // Handle different data structures: array, string, or { optional: [], sections: [] }
-            let ingredients: IngredientSection[] = []
-            
-            if (recipe.ingredients) {
-              if (typeof recipe.ingredients === 'string') {
-                try {
-                  const parsed = JSON.parse(recipe.ingredients)
-                  ingredients = Array.isArray(parsed) ? parsed : []
-                } catch (e) {
-                  console.error('Failed to parse ingredients JSON:', e)
-                  ingredients = []
-                }
-              } else if (Array.isArray(recipe.ingredients)) {
-                ingredients = recipe.ingredients
-              } else if (typeof recipe.ingredients === 'object') {
-                // Handle structure: { optional: [], sections: [] }
-                // Type guard to check if it's RawIngredients format
-                const rawIngredients = recipe.ingredients as RawIngredients
-                const normalized: IngredientSection[] = []
-                
-                if (Array.isArray(rawIngredients.sections)) {
-                  normalized.push(...rawIngredients.sections)
-                }
-                
-                if (Array.isArray(rawIngredients.optional) && rawIngredients.optional.length > 0) {
-                  normalized.push({
-                    section: 'Optional ingredients',
-                    items: rawIngredients.optional
-                  })
-                }
-                
-                ingredients = normalized
-              }
-            }
-            
-            // Debug log (can be removed later)
-            if (ingredients.length === 0) {
-              console.log('No ingredients found. Raw data:', recipe.ingredients)
-            }
-            
-            if (!Array.isArray(ingredients) || ingredients.length === 0) {
-              return (
-                <div className="text-gray-500 py-4 font-normal">
-                  <p>No ingredients available</p>
-                  {process.env.NODE_ENV === 'development' && (
-                    <pre className="text-xs mt-2 bg-gray-100 p-2 rounded-xl font-normal">
-                      Debug: {JSON.stringify(recipe.ingredients, null, 2)}
-                    </pre>
-                  )}
-                </div>
-              )
-            }
-            
-            return ingredients.map((section, sectionIndex) => {
+          {recipe.ingredients.length === 0 ? (
+            <div className="text-gray-500 py-4 font-normal">
+              <p>No ingredients available</p>
+            </div>
+          ) : (
+            recipe.ingredients.map((section, sectionIndex) => {
               // Validate section structure
               if (!section || typeof section !== 'object') {
                 return null
@@ -302,7 +204,7 @@ export default function RecipeDetailView({
                   : []
               
               const sectionName = section.section || 'Ingredients'
-              const isLast = sectionIndex === ingredients.length - 1
+              const isLast = sectionIndex === recipe.ingredients.length - 1
               
               if (items.length === 0) {
                 return (
@@ -350,7 +252,7 @@ export default function RecipeDetailView({
                 </div>
               )
             })
-          })()}
+          )}
         </div>
 
         {/* Instructions */}

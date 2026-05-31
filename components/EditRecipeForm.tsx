@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Recipe, RecipeInput, IngredientSection } from '@/lib/supabase'
+import { Recipe, RecipeInput } from '@/lib/supabase'
 import { ArrowLeft, X } from 'lucide-react'
 
 interface EditRecipeFormProps {
@@ -15,31 +15,13 @@ export default function EditRecipeForm({
   onSave,
   onCancel,
 }: EditRecipeFormProps) {
-  // Normalize ingredients - ensure it's always an array
-  const normalizeIngredients = (ingredients: any): IngredientSection[] => {
-    if (!ingredients) return []
-    if (typeof ingredients === 'string') {
-      try {
-        return JSON.parse(ingredients)
-      } catch (e) {
-        console.error('Failed to parse ingredients:', e)
-        return []
-      }
-    }
-    if (!Array.isArray(ingredients)) {
-      console.warn('Ingredients is not an array:', ingredients)
-      return []
-    }
-    return ingredients
-  }
-
   const [formData, setFormData] = useState<RecipeInput>({
     title: recipe.title,
     servings: recipe.servings,
     prep_time: recipe.prep_time || '',
     cook_time: recipe.cook_time || '',
     total_time: recipe.total_time || '',
-    ingredients: normalizeIngredients(recipe.ingredients),
+    ingredients: recipe.ingredients ?? [],
     instructions: recipe.instructions || [],
     tags: recipe.tags || [],
     source_url: recipe.source_url || '',
