@@ -191,21 +191,10 @@ export default function RecipeDetailView({
             </div>
           ) : (
             recipe.ingredients.map((section, sectionIndex) => {
-              // Validate section structure
-              if (!section || typeof section !== 'object') {
-                return null
-              }
-              
-              // Get items array - handle both 'items' and direct array format
-              const items = Array.isArray(section.items) 
-                ? section.items 
-                : Array.isArray(section) 
-                  ? section 
-                  : []
-              
+              const items = section.items ?? []
               const sectionName = section.section || 'Ingredients'
               const isLast = sectionIndex === recipe.ingredients.length - 1
-              
+
               if (items.length === 0) {
                 return (
                   <div key={sectionIndex} className={`pb-6 ${!isLast ? 'mb-6 border-b border-gray-200' : ''}`}>
@@ -216,27 +205,26 @@ export default function RecipeDetailView({
                   </div>
                 )
               }
-              
+
               return (
                 <div key={sectionIndex} className={`pb-6 ${!isLast ? 'mb-6 border-b border-gray-200' : ''}`}>
                   <h3 className="text-lg font-semibold text-gray-700 mb-3 tracking-[0.5px]">
                     {sectionName}
                   </h3>
                   <ul className="space-y-2">
-                    {items.map((item: any, itemIndex: number) => {
-                      // Handle different item formats
-                      const quantity = item?.quantity || item?.qty || ''
-                      const ingredient = item?.ingredient || item?.name || item?.text || String(item)
-                      
+                    {items.map((item, itemIndex) => {
+                      const ingredient = item.ingredient?.trim()
                       if (!ingredient) {
                         return null
                       }
-                      
+
                       const scaledQuantity =
                         servingMultiplier === 1
-                          ? quantity
-                          : quantity ? scaleQuantityUtil(quantity, servingMultiplier) : ''
-                      
+                          ? item.quantity
+                          : item.quantity
+                            ? scaleQuantityUtil(item.quantity, servingMultiplier)
+                            : ''
+
                       return (
                         <li key={itemIndex} className="flex gap-2 font-normal">
                           {scaledQuantity && (
