@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RecipeInput } from '@/lib/supabase'
+import { recipeToIngredientTokens } from '@/lib/ingredient-normalize'
 import {
   normalizeIngredients,
   normalizeRecipeIngredients,
 } from '@/lib/recipe-normalize'
+import { requireSupabaseEnv } from '@/lib/supabase-env'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 // GET single recipe
@@ -13,6 +15,9 @@ export async function GET(
 ) {
   const { id } = await params
   try {
+    const env = requireSupabaseEnv()
+    if (!env.ok) return env.response
+
     const supabase = createServerSupabaseClient()
     const { data, error } = await supabase
       .from('recipes')
@@ -47,9 +52,13 @@ export async function PUT(
 ) {
   const { id } = await params
   try {
+    const env = requireSupabaseEnv()
+    if (!env.ok) return env.response
+
     const supabase = createServerSupabaseClient()
     const recipe: RecipeInput = await request.json()
     recipe.ingredients = normalizeIngredients(recipe.ingredients)
+    const ingredient_tokens = recipeToIngredientTokens(recipe.ingredients)
 
     // Validate required fields
     if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
@@ -71,6 +80,7 @@ export async function PUT(
         cook_time: recipe.cook_time || null,
         total_time: recipe.total_time || null,
         ingredients: recipe.ingredients,
+        ingredient_tokens,
         instructions: recipe.instructions,
         tags: recipe.tags || [],
         source_url: recipe.source_url || null,

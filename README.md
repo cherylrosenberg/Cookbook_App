@@ -31,8 +31,9 @@ npm install
 3. **Set up Supabase database:**
    - Go to your Supabase project dashboard
    - Navigate to SQL Editor
-   - Copy and paste the contents of `supabase/migrations/001_create_recipes_table.sql`
-   - Run the SQL query to create the recipes table
+   - Run migrations in order through `005_match_recipe_chunks_rpc.sql` (see SETUP_GUIDE.md)
+   - If upgrading an existing DB, run `npm run backfill:ingredient-tokens` once
+   - For RAG: download Martinez CSV to `data/`, then `npm run ingest:martinez` (see SETUP_GUIDE.md §2.6)
 
 4. **Run the development server:**
 ```bash
@@ -54,6 +55,7 @@ npm run dev
 
 - ✅ Add recipes from URL or text input
 - ✅ AI-powered recipe extraction using Google Gemini
+- ✅ Generate recipes via API (pantry + user settings + RAG corpus; PR3)
 - ✅ Recipe library with responsive grid layout
 - ✅ Search recipes by title or tags
 - ✅ Filter recipes by tags (OR logic)
@@ -70,7 +72,9 @@ npm run dev
 ├── app/
 │   ├── api/
 │   │   ├── extract-recipe/     # AI recipe extraction endpoint
-│   │   └── recipes/             # CRUD endpoints for recipes
+│   │   ├── generate-recipe/    # RAG + Gemini recipe generation (PR3)
+│   │   ├── recipes/             # CRUD endpoints for recipes
+│   │   └── user-settings/       # Staples and dietary preferences
 │   ├── recipe/[id]/            # Recipe detail page
 │   ├── layout.tsx              # Root layout
 │   ├── page.tsx                # Home page (recipe library)
@@ -83,8 +87,15 @@ npm run dev
 │   └── SearchAndFilters.tsx    # Search and tag filters
 ├── lib/
 │   ├── supabase.ts             # Supabase client and types
-│   ├── gemini.ts               # Gemini API integration
+│   ├── gemini.ts               # Gemini extract + generate
+│   ├── recipe-retrieval.ts     # Pantry match + corpus vector search
+│   ├── embeddings.ts           # gemini-embedding-001 for RAG
+│   ├── recipe-chunk.ts         # Corpus chunk builder
 │   └── quantity-parser.ts      # Quantity scaling logic
+├── scripts/
+│   ├── ingest-martinez.ts      # RAG corpus ingest
+│   └── test-retrieval.ts       # Vector search smoke test
+├── data/                       # Martinez CSV (gitignored)
 └── supabase/
     └── migrations/             # Database migrations
 ```

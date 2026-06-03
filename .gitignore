@@ -35,3 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# RAG corpus data (download locally)
+/data/*.csv
+/data/.ingest-martinez-checkpoint.json
+

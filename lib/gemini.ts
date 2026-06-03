@@ -1,7 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { RecipeInput } from './supabase'
+import {
+  PersonalRecipeMatch,
+  RecipeChunkMatch,
+  RecipeInput,
+  UserSettings,
+} from './supabase'
 import { normalizeIngredients } from './recipe-normalize'
 import { fetchRecipePageContent } from './fetch-recipe-page'
+
+const DEFAULT_GENERATION_MODEL = 'gemini-3-flash-preview'
+
+export function getGenerationModelName(): string {
+  return process.env.GEMINI_GENERATION_MODEL ?? DEFAULT_GENERATION_MODEL
+}
 
 // List available models for debugging
 // Note: listModels might not be available in all SDK versions
@@ -51,11 +62,169 @@ Rules:
 
 Output: Valid JSON only. No extra keys, commentary, or explanations. Do NOT hallucinate any data.`
 
-const GENERATION_CONFIG = {
+const EXTRACT_GENERATION_CONFIG = {
   temperature: 0.1,
   topK: 40,
   topP: 0.95,
 } as const
+
+const GENERATE_RECIPE_CONFIG = {
+  temperature: 0.5,
+  topK: 40,
+  topP: 0.95,
+} as const
+
+const RECIPE_JSON_SCHEMA = `{
+"title": "string",
+"servings": "string",
+"prep_time": "string (estimate if not stated)",
+"cook_time": "string (estimate if not stated)",
+"ingredients": {
+  "sections": [{"section": "string", "items": [{"ingredient": "string", "quantity": "string"}]}],
+  "optional": [{"ingredient": "string", "quantity": "string"}]
+},
+"instructions": ["string"],
+"tags": ["string"],
+"source_url": "string"
+}`
+
+const MAX_CORPUS_SNIPPET_CHARS = 1800
+
+function truncateSnippet(text: string, max = MAX_CORPUS_SNIPPET_CHARS): string {
+  const t = text.trim()
+  if (t.length <= max) return t
+  return t.slice(0, max) + '\n...'
+}
+
+function formatUserSettingsBlock(settings: UserSettings | null): string {
+  if (!settings) return '(No saved user preferences.)'
+  const lines: string[] = []
+  if (settings.diets?.length) lines.push(`Diets: ${settings.diets.join(', ')}`)
+  if (settings.allergens_exclude?.length) {
+    lines.push(`Exclude allergens: ${settings.allergens_exclude.join(', ')}`)
+  }
+  if (settings.cuisines_prefer?.length) {
+    lines.push(`Prefer cuisines: ${settings.cuisines_prefer.join(', ')}`)
+  }
+  if (settings.cuisines_avoid?.length) {
+    lines.push(`Avoid cuisines: ${settings.cuisines_avoid.join(', ')}`)
+  }
+  if (settings.equipment?.length) {
+    lines.push(`Equipment: ${settings.equipment.join(', ')}`)
+  }
+  if (settings.max_prep_minutes != null) {
+    lines.push(`Max prep minutes: ${settings.max_prep_minutes}`)
+  }
+  if (settings.max_cook_minutes != null) {
+    lines.push(`Max cook minutes: ${settings.max_cook_minutes}`)
+  }
+  if (settings.skill_level) lines.push(`Skill level: ${settings.skill_level}`)
+  lines.push(`Default servings: ${settings.default_servings}`)
+  if (settings.staple_ingredients?.length) {
+    lines.push(`Staples: ${settings.staple_ingredients.join(', ')}`)
+  }
+  return lines.length ? lines.join('\n') : '(No saved user preferences.)'
+}
+
+function formatPersonalMatches(matches: PersonalRecipeMatch[]): string {
+  if (!matches.length) return '(No matching recipes in personal cookbook.)'
+  return matches
+    .map(
+      (m) =>
+        `- ${m.title} (overlap: ${m.overlap_count}; tokens: ${m.ingredient_tokens.slice(0, 12).join(', ')})`
+    )
+    .join('\n')
+}
+
+function formatCorpusMatches(matches: RecipeChunkMatch[]): string {
+  if (!matches.length) return '(No corpus references.)'
+  return matches
+    .map(
+      (m, i) =>
+        `[${i + 1}] ${m.title} (${m.source}, similarity ${(m.similarity * 100).toFixed(0)}%)\n${truncateSnippet(m.content)}`
+    )
+    .join('\n\n')
+}
+
+export interface GenerateRecipeContextParams {
+  query: string
+  pantryTokens: string[]
+  settings: UserSettings | null
+  personalMatches: PersonalRecipeMatch[]
+  corpusMatches: RecipeChunkMatch[]
+}
+
+export async function generateRecipeFromContext(
+  params: GenerateRecipeContextParams
+): Promise<RecipeInput> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
+
+  const inspirationTitles = [
+    ...params.personalMatches.map((m) => m.title),
+    ...params.corpusMatches.map((m) => m.title),
+  ]
+
+  const prompt = `You are a creative recipe developer. Create ONE NEW original recipe and return ONLY valid JSON:
+
+${RECIPE_JSON_SCHEMA}
+
+CRITICAL RULES:
+- Write an ORIGINAL recipe. Do NOT copy ingredient lists or instruction steps verbatim from the reference material below.
+- Use references for ideas, techniques, and flavor direction only—not as text to paste.
+- Honor user constraints (diets, allergens, cuisines, time limits, equipment).
+- Prefer ingredients from the pantry list when possible.
+- Servings: use user default if not specified in the request.
+- Tags: 2-4 broad tags, Sentence case (same style as a home cookbook app).
+- source_url: omit or empty string for generated recipes.
+- notes: include a short line listing inspiration titles (if any), e.g. "Inspired by: Title A, Title B (corpus: Martinez dataset, CC BY-SA 3.0)."
+
+User request:
+${params.query.trim()}
+
+Pantry tokens (canonical): ${params.pantryTokens.join(', ') || '(none)'}
+
+User preferences:
+${formatUserSettingsBlock(params.settings)}
+
+Personal cookbook matches (titles/tokens only—inspiration, do not copy):
+${formatPersonalMatches(params.personalMatches)}
+
+Corpus references (truncated—inspiration only, do not copy verbatim):
+${formatCorpusMatches(params.corpusMatches)}
+
+Output: Valid JSON only. No markdown fences or commentary.`
+
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({ model: getGenerationModelName() })
+
+  try {
+    const result = await model.generateContent(prompt, {
+      generationConfig: GENERATE_RECIPE_CONFIG,
+    } as Parameters<typeof model.generateContent>[1])
+    const response = await result.response
+    const recipe = parseGeminiRecipeJson(response.text())
+
+    if (!recipe.notes && inspirationTitles.length > 0) {
+      const unique = [...new Set(inspirationTitles)]
+      recipe.notes = `Inspired by: ${unique.join(', ')} (corpus: Martinez dataset, CC BY-SA 3.0).`
+    }
+
+    if (
+      params.settings?.default_servings &&
+      (!recipe.servings || recipe.servings < 1)
+    ) {
+      recipe.servings = params.settings.default_servings
+    }
+
+    return recipe
+  } catch (error) {
+    console.error('Error generating recipe:', error)
+    throw new Error(
+      `Failed to generate recipe: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
 
 /** Strip markdown fences, normalize ingredients, validate, and coerce servings/tags. */
 export function parseGeminiRecipeJson(jsonText: string, sourceUrl?: string): RecipeInput {
@@ -116,8 +285,8 @@ export async function extractRecipeFromText(text: string, sourceUrl?: string): P
 
   try {
     const result = await model.generateContent(prompt, {
-      generationConfig: GENERATION_CONFIG,
-    } as any)
+      generationConfig: EXTRACT_GENERATION_CONFIG,
+    } as Parameters<typeof model.generateContent>[1])
     const response = await result.response
     const responseText = response.text()
 

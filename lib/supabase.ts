@@ -1,5 +1,7 @@
 // Types for recipes (DB and API). Server client: lib/supabase-server.ts
 
+export type SkillLevel = 'beginner' | 'intermediate' | 'advanced'
+
 export interface Recipe {
   id: string
   user_id: string | null
@@ -11,10 +13,44 @@ export interface Recipe {
   ingredients: IngredientSection[]
   instructions: string[]
   tags: string[]
+  ingredient_tokens: string[]
   source_url: string | null
   notes: string | null
   created_at: string
   updated_at: string
+}
+
+/** Per-user staples and dietary preferences (pre-auth: single row with user_id null). */
+export interface UserSettings {
+  id: string
+  user_id: string | null
+  staple_ingredients: string[]
+  /** e.g. vegetarian, vegan, gluten_free */
+  diets: string[]
+  /** e.g. peanuts, shellfish, dairy */
+  allergens_exclude: string[]
+  cuisines_prefer: string[]
+  cuisines_avoid: string[]
+  equipment: string[]
+  max_prep_minutes: number | null
+  max_cook_minutes: number | null
+  skill_level: SkillLevel | null
+  default_servings: number
+  created_at: string
+  updated_at: string
+}
+
+export interface UserSettingsInput {
+  staple_ingredients?: string[]
+  diets?: string[]
+  allergens_exclude?: string[]
+  cuisines_prefer?: string[]
+  cuisines_avoid?: string[]
+  equipment?: string[]
+  max_prep_minutes?: number | null
+  max_cook_minutes?: number | null
+  skill_level?: SkillLevel | null
+  default_servings?: number
 }
 
 export interface IngredientSection {
@@ -50,4 +86,59 @@ export interface RecipeInput {
   tags: string[]
   source_url?: string
   notes?: string
+}
+
+export type RecipeChunkSource = 'martinez' | 'wikibooks'
+
+export interface RecipeChunk {
+  id: string
+  source: RecipeChunkSource
+  source_id: string
+  title: string
+  chunk_index: number
+  content: string
+  ingredient_tokens: string[]
+  embedding_model: string
+  embedding_dim: number
+  created_at: string
+}
+
+export interface RecipeChunkMatch {
+  id: string
+  source: RecipeChunkSource
+  title: string
+  content: string
+  similarity: number
+}
+
+export interface GenerateRecipeRequest {
+  query: string
+  pantry?: string[]
+  /** Default true — load staples, diets, allergens, etc. from user_settings */
+  include_user_settings?: boolean
+  personal_match_count?: number
+  corpus_match_count?: number
+}
+
+export interface PersonalRecipeMatch {
+  id: string
+  title: string
+  overlap_count: number
+  ingredient_tokens: string[]
+}
+
+export interface GenerateRecipeMeta {
+  pantry_tokens: string[]
+  embed_model: string
+  embed_dim: number
+  generation_model: string
+  corpus_warning?: string
+  sources_inspiration?: string[]
+}
+
+export interface GenerateRecipeResponse {
+  recipe: RecipeInput
+  personal_matches: PersonalRecipeMatch[]
+  corpus_matches: RecipeChunkMatch[]
+  meta: GenerateRecipeMeta
 }

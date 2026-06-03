@@ -10,7 +10,7 @@ function isRawIngredients(value: object): value is RawIngredients {
   return 'sections' in value || 'optional' in value
 }
 
-function isOptionalSectionName(name: string): boolean {
+export function isOptionalSectionName(name: string): boolean {
   const trimmed = name.trim()
   return (
     /^optional\b/i.test(trimmed) ||

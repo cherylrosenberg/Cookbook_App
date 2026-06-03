@@ -61,15 +61,85 @@ This guide will walk you through setting up all the required environment variabl
    - It's safe to expose this in client-side code
    - Click the **👁️ eye icon** to reveal it, then copy it
 
-### 2.4 Set Up the Database Table
+### 2.4 Set Up the Database Tables
 1. In your Supabase dashboard, click on **"SQL Editor"** in the left sidebar
 2. Click **"New query"**
-3. Open the file `supabase/migrations/001_create_recipes_table.sql` from this project
-4. Copy the entire contents of that SQL file
-5. Paste it into the SQL Editor in Supabase
-6. Click **"Run"** (or press Cmd/Ctrl + Enter)
-7. You should see a success message confirming the table was created
-8. Verify by going to **"Table Editor"** in the left sidebar - you should see a `recipes` table
+3. Run each migration file **in order** from `supabase/migrations/`:
+   - `001_create_recipes_table.sql` — `recipes` table
+   - `002_create_user_settings.sql` — `user_settings` table (staples, diets, etc.)
+   - `003_add_recipes_ingredient_tokens.sql` — `ingredient_tokens` column on `recipes`
+   - `004_enable_pgvector_and_recipe_chunks.sql` — `recipe_chunks` + pgvector (enable **vector** extension in Database → Extensions if SQL fails)
+   - `005_match_recipe_chunks_rpc.sql` — similarity search function
+4. For each file: copy the full contents, paste into SQL Editor, click **Run**
+5. Verify in **Table Editor**: `recipes`, `user_settings`, and `recipe_chunks` exist
+
+### 2.5 Backfill ingredient tokens (existing recipes only)
+If you already had recipes before running migration `003`, run once from the `Cookbook_App` directory:
+
+```bash
+npx tsx scripts/backfill-ingredient-tokens.ts
+```
+
+New recipes created via the API compute `ingredient_tokens` automatically on save.
+
+### 2.6 RAG corpus — Martinez ingest (PR2)
+
+Embeddings use **`gemini-embedding-001`** at **768** dimensions (`RETRIEVAL_DOCUMENT` for corpus, `RETRIEVAL_QUERY` for search). Each row stores `embedding_model` and `embedding_dim` for audit.
+
+**Add to `.env.local`** (in addition to existing vars):
+
+```env
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+```
+
+Find it in Supabase → Project Settings → API → **service_role** (secret; never expose in the browser or commit to git).
+
+**Download corpus:**
+
+1. Get `13k-recipes.csv` from [josephrmartinez/recipe-dataset](https://github.com/josephrmartinez/recipe-dataset)
+2. Save as `Cookbook_App/data/martinez-13k-recipes.csv` (see `data/README.md`)
+
+**Ingest (recommended order):**
+
+```bash
+cd Cookbook_App
+npm run ingest:martinez -- --dry-run --limit 50
+npm run ingest:martinez -- --limit 2000
+npm run test:retrieval
+```
+
+**Rate limits (Gemini free tier):** The ingest script batches **30 recipes per API request** and waits **3 seconds** between batches. If you see `429 RESOURCE_EXHAUSTED`, lower `--batch-size` (e.g. 15) or increase `--delay-ms`. Check live limits in [AI Studio](https://aistudio.google.com/) before a full ~13k run. Enable billing Tier 1 if daily request quota is too low (typically low cost for a one-time embed).
+
+**Full corpus later:**
+
+```bash
+npm run ingest:martinez -- --clear --limit 13000
+```
+
+**Flags:** `--resume` (continue from checkpoint), `--clear` (delete existing martinez chunks), `--dry-run`, `--batch-size`, `--delay-ms`
+
+### 2.7 Test recipe generation (PR3)
+
+Requires Martinez ingest (§2.6) and `GEMINI_API_KEY`. Optional: `PUT /api/user-settings` for staples and dietary prefs.
+
+```bash
+cd Cookbook_App
+npm run dev
+```
+
+In another terminal:
+
+```bash
+curl -X POST http://localhost:3000/api/generate-recipe ^
+  -H "Content-Type: application/json" ^
+  -d "{\"query\":\"vegetarian dinner with chickpeas and spinach\",\"pantry\":[\"chickpeas\",\"spinach\",\"lemon\"]}"
+```
+
+(PowerShell: use `Invoke-RestMethod` or curl with escaped quotes as above.)
+
+**Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-3-flash-preview`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
+
+**Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (tokens, models, optional `corpus_warning`).
 
 ---
 
