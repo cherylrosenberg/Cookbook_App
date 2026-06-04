@@ -39,6 +39,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const hasFeedback = body.feedback !== undefined && body.feedback !== null
+    const hasPrevious = body.previous_recipe !== undefined && body.previous_recipe !== null
+    if (hasFeedback !== hasPrevious) {
+      return NextResponse.json(
+        {
+          error:
+            'Refinement requires both feedback and previous_recipe, or neither',
+        },
+        { status: 400 }
+      )
+    }
+    const feedback = body.feedback?.trim() ?? ''
+    const isRefinement = hasFeedback && hasPrevious
+    if (isRefinement && !feedback) {
+      return NextResponse.json(
+        { error: 'Refinement feedback cannot be empty' },
+        { status: 400 }
+      )
+    }
+
     const includeUserSettings = body.include_user_settings !== false
     const personalMatchCount =
       body.personal_match_count ?? DEFAULT_PERSONAL_MATCH
@@ -55,7 +75,11 @@ export async function POST(request: NextRequest) {
       : null
 
     const pantryTokens = buildPantryTokens(pantry, settings)
-    const retrievalQuery = buildRetrievalQueryText(query, pantryTokens)
+    const retrievalQuery = buildRetrievalQueryText(
+      query,
+      pantryTokens,
+      isRefinement ? feedback : undefined
+    )
 
     const [personalMatches, corpusMatches] = await Promise.all([
       matchPersonalRecipes(supabase, pantryTokens, {
@@ -82,6 +106,9 @@ export async function POST(request: NextRequest) {
       settings,
       personalMatches,
       corpusMatches,
+      ...(isRefinement
+        ? { feedback, previousRecipe: body.previous_recipe }
+        : {}),
     })
 
     const inspirationTitles = [
@@ -100,6 +127,7 @@ export async function POST(request: NextRequest) {
         embed_model: EMBEDDING_MODEL,
         embed_dim: EMBEDDING_DIM,
         generation_model: getGenerationModelName(),
+        ...(isRefinement ? { refinement: true } : {}),
         ...(corpusWarning ? { corpus_warning: corpusWarning } : {}),
         ...(inspirationTitles.length
           ? { sources_inspiration: inspirationTitles }

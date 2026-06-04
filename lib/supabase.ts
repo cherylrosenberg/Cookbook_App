@@ -118,6 +118,10 @@ export interface GenerateRecipeRequest {
   include_user_settings?: boolean
   personal_match_count?: number
   corpus_match_count?: number
+  /** Refinement: user change request (requires previous_recipe) */
+  feedback?: string
+  /** Refinement: last generated recipe to revise (requires feedback) */
+  previous_recipe?: RecipeInput
 }
 
 export interface PersonalRecipeMatch {
@@ -134,6 +138,7 @@ export interface GenerateRecipeMeta {
   generation_model: string
   corpus_warning?: string
   sources_inspiration?: string[]
+  refinement?: boolean
 }
 
 export interface GenerateRecipeResponse {

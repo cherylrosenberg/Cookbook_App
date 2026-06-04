@@ -55,7 +55,9 @@ npm run dev
 
 - ✅ Add recipes from URL or text input
 - ✅ AI-powered recipe extraction using Google Gemini
-- ✅ Generate recipes via API (pantry + user settings + RAG corpus; PR3)
+- ✅ Generate recipes from pantry + settings + RAG corpus (PR3 API, PR4 UI at `/generate`)
+- ✅ Kitchen settings page (`/settings`) — staples, diets, allergens, cuisines
+- ✅ Preview generated recipes, refine with feedback, save when ready
 - ✅ Recipe library with responsive grid layout
 - ✅ Search recipes by title or tags
 - ✅ Filter recipes by tags (OR logic)
@@ -75,19 +77,23 @@ npm run dev
 │   │   ├── generate-recipe/    # RAG + Gemini recipe generation (PR3)
 │   │   ├── recipes/             # CRUD endpoints for recipes
 │   │   └── user-settings/       # Staples and dietary preferences
+│   ├── generate/               # Recipe generator UI (PR4)
+│   ├── settings/               # Kitchen preferences UI (PR4)
 │   ├── recipe/[id]/            # Recipe detail page
 │   ├── layout.tsx              # Root layout
 │   ├── page.tsx                # Home page (recipe library)
 │   └── globals.css             # Global styles
 ├── components/
+│   ├── AppNav.tsx              # Home / Generate / Settings nav
 │   ├── RecipeCard.tsx          # Recipe card component
 │   ├── RecipeInputModal.tsx    # Add recipe modal
-│   ├── RecipeDetailView.tsx    # Recipe detail view
-│   ├── EditRecipeForm.tsx      # Edit recipe form
+│   ├── GeneratedRecipePreview.tsx
+│   ├── UserSettingsForm.tsx
 │   └── SearchAndFilters.tsx    # Search and tag filters
 ├── lib/
 │   ├── supabase.ts             # Supabase client and types
-│   ├── gemini.ts               # Gemini extract + generate
+│   ├── save-recipe.ts          # Shared recipe insert helper
+│   ├── gemini.ts               # Gemini extract + generate + refine
 │   ├── recipe-retrieval.ts     # Pantry match + corpus vector search
 │   ├── embeddings.ts           # gemini-embedding-001 for RAG
 │   ├── recipe-chunk.ts         # Corpus chunk builder

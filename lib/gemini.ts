@@ -5,6 +5,7 @@ import {
   RecipeInput,
   UserSettings,
 } from './supabase'
+import { enrichRecipeInstructions } from './instruction-enrich'
 import { normalizeIngredients } from './recipe-normalize'
 import { fetchRecipePageContent } from './fetch-recipe-page'
 
@@ -152,6 +153,36 @@ export interface GenerateRecipeContextParams {
   settings: UserSettings | null
   personalMatches: PersonalRecipeMatch[]
   corpusMatches: RecipeChunkMatch[]
+  feedback?: string
+  previousRecipe?: RecipeInput
+}
+
+function formatPreviousRecipeSummary(recipe: RecipeInput): string {
+  const ingredientLines: string[] = []
+  for (const section of recipe.ingredients ?? []) {
+    for (const item of section.items ?? []) {
+      ingredientLines.push(
+        `- ${item.quantity ? `${item.quantity} ` : ''}${item.ingredient}`
+      )
+    }
+  }
+  const instructions = recipe.instructions ?? []
+  return [
+    `Title: ${recipe.title}`,
+    `Servings: ${recipe.servings}`,
+    `Prep: ${recipe.prep_time || '(none)'}`,
+    `Cook: ${recipe.cook_time || '(none)'}`,
+    `Tags: ${(recipe.tags ?? []).join(', ') || '(none)'}`,
+    `Ingredients (${ingredientLines.length} items):`,
+    ...ingredientLines.slice(0, 40),
+    ...(ingredientLines.length > 40 ? ['...'] : []),
+    `Instructions (${instructions.length} steps):`,
+    ...instructions.slice(0, 15).map((s, i) => `${i + 1}. ${s}`),
+    ...(instructions.length > 15 ? ['...'] : []),
+    recipe.notes ? `Notes: ${recipe.notes}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 export async function generateRecipeFromContext(
@@ -165,7 +196,29 @@ export async function generateRecipeFromContext(
     ...params.corpusMatches.map((m) => m.title),
   ]
 
-  const prompt = `You are a creative recipe developer. Create ONE NEW original recipe and return ONLY valid JSON:
+  const isRefinement =
+    Boolean(params.feedback?.trim()) && Boolean(params.previousRecipe)
+
+  const taskIntro = isRefinement
+    ? `You are revising a recipe draft based on user feedback. Return ONE updated original recipe as valid JSON.`
+    : `You are a creative recipe developer. Create ONE NEW original recipe and return ONLY valid JSON:`
+
+  const refinementBlock = isRefinement
+    ? `
+REFINEMENT (apply this feedback to the previous recipe):
+${params.feedback!.trim()}
+
+Previous recipe draft (revise this—do not start from scratch unless feedback requires it):
+${formatPreviousRecipeSummary(params.previousRecipe!)}
+
+Refinement rules:
+- Apply the user's feedback precisely (substitutions, omissions, time changes, etc.).
+- Keep honoring diets, allergens, cuisines, time limits, and pantry when possible.
+- Still write original wording; do not copy corpus text verbatim.
+`
+    : ''
+
+  const prompt = `${taskIntro}
 
 ${RECIPE_JSON_SCHEMA}
 
@@ -174,11 +227,12 @@ CRITICAL RULES:
 - Use references for ideas, techniques, and flavor direction only—not as text to paste.
 - Honor user constraints (diets, allergens, cuisines, time limits, equipment).
 - Prefer ingredients from the pantry list when possible.
+- Instructions: include each ingredient's full quantity from the ingredients list on its FIRST mention in the steps; do not repeat full quantities on later mentions. If a step uses only a partial amount (e.g. "½ cup"), write only that partial amount in that step.
 - Servings: use user default if not specified in the request.
 - Tags: 2-4 broad tags, Sentence case (same style as a home cookbook app).
 - source_url: omit or empty string for generated recipes.
 - notes: include a short line listing inspiration titles (if any), e.g. "Inspired by: Title A, Title B (corpus: Martinez dataset, CC BY-SA 3.0)."
-
+${refinementBlock}
 User request:
 ${params.query.trim()}
 
@@ -266,7 +320,8 @@ export function parseGeminiRecipeJson(jsonText: string, sourceUrl?: string): Rec
     recipe.source_url = sourceUrl
   }
 
-  return recipe as unknown as RecipeInput
+  const parsed = recipe as unknown as RecipeInput
+  return enrichRecipeInstructions(parsed)
 }
 
 export async function extractRecipeFromText(text: string, sourceUrl?: string): Promise<RecipeInput> {

@@ -36,12 +36,19 @@ export function buildPantryTokens(
 /** Text sent to embedQuery for corpus search. */
 export function buildRetrievalQueryText(
   query: string,
-  pantryTokens: string[]
+  pantryTokens: string[],
+  feedback?: string
 ): string {
   const base = query.trim()
-  if (pantryTokens.length === 0) return truncateForEmbedding(base)
-  const pantryLine = `Available ingredients: ${pantryTokens.join(', ')}`
-  return truncateForEmbedding(`${base}\n${pantryLine}`)
+  let text = base
+  if (pantryTokens.length > 0) {
+    text += `\nAvailable ingredients: ${pantryTokens.join(', ')}`
+  }
+  const trimmedFeedback = feedback?.trim()
+  if (trimmedFeedback) {
+    text += `\nRefinement: ${trimmedFeedback}`
+  }
+  return truncateForEmbedding(text)
 }
 
 export async function matchPersonalRecipes(

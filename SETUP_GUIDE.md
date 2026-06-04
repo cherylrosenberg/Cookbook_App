@@ -139,7 +139,24 @@ curl -X POST http://localhost:3000/api/generate-recipe ^
 
 **Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-3-flash-preview`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
 
-**Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (tokens, models, optional `corpus_warning`).
+**Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (tokens, models, optional `corpus_warning`, `refinement` when revising).
+
+**Refine** (revise last draft — send both fields):
+
+```bash
+curl -X POST http://localhost:3000/api/generate-recipe ^
+  -H "Content-Type: application/json" ^
+  -d "{\"query\":\"vegetarian dinner\",\"pantry\":[\"spinach\"],\"feedback\":\"I do not have chickpeas, use cannellini beans\",\"previous_recipe\":{\"title\":\"...\",\"servings\":4,\"prep_time\":\"10 min\",\"cook_time\":\"20 min\",\"total_time\":\"\",\"ingredients\":[],\"instructions\":[],\"tags\":[]}}"
+```
+
+### 2.8 Generator and settings UI (PR4)
+
+With `npm run dev` running:
+
+- **http://localhost:3000/generate** — query, pantry, generate, preview, refine with feedback, **Save to cookbook** (`POST /api/recipes`).
+- **http://localhost:3000/settings** — staples, diets, allergens, cuisines, time limits, default servings.
+
+Generated recipes are **not** saved until you click Save.
 
 ---
 

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RecipeInput } from '@/lib/supabase'
-import { recipeToIngredientTokens } from '@/lib/ingredient-normalize'
-import {
-  normalizeIngredients,
-  normalizeRecipeIngredients,
-} from '@/lib/recipe-normalize'
+import { insertRecipeFromInput } from '@/lib/save-recipe'
+import { normalizeRecipeIngredients } from '@/lib/recipe-normalize'
 import { requireSupabaseEnv } from '@/lib/supabase-env'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
@@ -44,43 +41,16 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerSupabaseClient()
     const recipe: RecipeInput = await request.json()
-    recipe.ingredients = normalizeIngredients(recipe.ingredients)
-    const ingredient_tokens = recipeToIngredientTokens(recipe.ingredients)
 
-    // Validate required fields
-    if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    try {
+      const saved = await insertRecipeFromInput(supabase, recipe)
+      return NextResponse.json(saved, { status: 201 })
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Missing required fields') {
+        return NextResponse.json({ error: err.message }, { status: 400 })
+      }
+      throw err
     }
-
-    // Ensure servings is a valid number, default to 4 only if missing or 0
-    const servings = (recipe.servings && recipe.servings > 0) ? recipe.servings : 4
-
-    const { data, error } = await supabase
-      .from('recipes')
-      .insert({
-        title: recipe.title,
-        servings: servings,
-        prep_time: recipe.prep_time || null,
-        cook_time: recipe.cook_time || null,
-        total_time: recipe.total_time || null,
-        ingredients: recipe.ingredients,
-        ingredient_tokens,
-        instructions: recipe.instructions,
-        tags: recipe.tags || [],
-        source_url: recipe.source_url || null,
-        notes: recipe.notes || null,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      throw error
-    }
-
-    return NextResponse.json(normalizeRecipeIngredients(data), { status: 201 })
   } catch (error) {
     console.error('Error creating recipe:', error)
     return NextResponse.json(

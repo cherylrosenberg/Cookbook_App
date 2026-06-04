@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Recipe } from '@/lib/supabase'
+import Link from 'next/link'
 import RecipeCard from '@/components/RecipeCard'
 import RecipeInputModal from '@/components/RecipeInputModal'
 import SearchAndFilters from '@/components/SearchAndFilters'
 import CarrotLoading from '@/components/CarrotLoading'
+import AppNav from '@/components/AppNav'
 import { Search } from 'lucide-react'
 
 export default function Home() {
@@ -166,6 +168,7 @@ export default function Home() {
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        <AppNav />
         {/* Header - sticky, collapses to search + button when scrolled */}
         <div className="sticky top-0 z-20 mb-8 md:mb-10 bg-white rounded-xl shadow-card border border-gray-100 overflow-hidden transition-[padding] duration-300 ease-out">
           <div
@@ -185,12 +188,20 @@ export default function Home() {
           <div className={`px-5 md:px-6 flex flex-col sm:flex-row sm:items-center gap-3 transition-[padding] duration-300 ${
             headerCollapsed ? 'py-4' : 'pb-5 md:pb-6 pt-2'
           }`}>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-forest-green text-white px-6 py-3 rounded-full hover:opacity-90 transition-opacity font-medium shrink-0 order-2 sm:order-1"
-            >
-              + Add Recipe
-            </button>
+            <div className="flex flex-wrap gap-2 shrink-0 order-2 sm:order-1">
+              <Link
+                href="/generate"
+                className="bg-white text-forest-green border-2 border-forest-green px-6 py-3 rounded-full hover:bg-gray-50 transition-colors font-medium"
+              >
+                Generate Recipe
+              </Link>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-forest-green text-white px-6 py-3 rounded-full hover:opacity-90 transition-opacity font-medium"
+              >
+                + Add Recipe
+              </button>
+            </div>
             <div className="relative flex-1 min-w-0 order-1 sm:order-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
               <input

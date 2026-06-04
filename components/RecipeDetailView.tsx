@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Recipe } from '@/lib/supabase'
+import AppNav from '@/components/AppNav'
 import { ArrowLeft, Edit, Clock, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
 import { scaleQuantity as scaleQuantityUtil, calculateTotalTime } from '@/lib/quantity-parser'
 import {
@@ -45,6 +46,7 @@ export default function RecipeDetailView({
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
+        <AppNav />
         {/* Header image - same as recipe card placeholder */}
         <div
           className={`${gradientClass} h-40 md:h-48 -mx-4 md:-mx-6 lg:-mx-8 mb-6 rounded-xl flex items-center justify-center overflow-hidden`}
