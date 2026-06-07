@@ -5,7 +5,12 @@ import {
   EMBEDDING_MODEL,
 } from '@/lib/embeddings'
 import {
-  buildPantryTokens,
+  appendPantryGapToRecipeNotes,
+  buildStapleTokens,
+  computePantryGaps,
+} from '@/lib/pantry-gap'
+import {
+  buildKeyIngredientTokens,
   buildRetrievalQueryText,
   matchCorpusChunks,
   matchPersonalRecipes,
@@ -17,6 +22,12 @@ import { getSettingsForRequest } from '@/lib/user-settings'
 
 const DEFAULT_PERSONAL_MATCH = 5
 const DEFAULT_CORPUS_MATCH = 5
+
+function parseKeyIngredients(body: GenerateRecipeRequest): string[] {
+  if (Array.isArray(body.key_ingredients)) return body.key_ingredients
+  if (Array.isArray(body.pantry)) return body.pantry
+  return []
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,7 +74,7 @@ export async function POST(request: NextRequest) {
     const personalMatchCount =
       body.personal_match_count ?? DEFAULT_PERSONAL_MATCH
     const corpusMatchCount = body.corpus_match_count ?? DEFAULT_CORPUS_MATCH
-    const pantry = Array.isArray(body.pantry) ? body.pantry : []
+    const keyIngredients = parseKeyIngredients(body)
 
     const supabase = createServerSupabaseClient()
 
@@ -74,21 +85,23 @@ export async function POST(request: NextRequest) {
       ? await getSettingsForRequest(supabase, { userId })
       : null
 
-    const pantryTokens = buildPantryTokens(pantry, settings)
+    const keyIngredientTokens = buildKeyIngredientTokens(keyIngredients)
+    const stapleTokens = includeUserSettings ? buildStapleTokens(settings) : []
+
     const retrievalQuery = buildRetrievalQueryText(
       query,
-      pantryTokens,
+      keyIngredientTokens,
       isRefinement ? feedback : undefined
     )
 
     const [personalMatches, corpusMatches] = await Promise.all([
-      matchPersonalRecipes(supabase, pantryTokens, {
+      matchPersonalRecipes(supabase, keyIngredientTokens, {
         userId,
         limit: personalMatchCount,
       }),
       matchCorpusChunks(supabase, retrievalQuery, {
         limit: corpusMatchCount,
-        pantryTokens,
+        keyIngredientTokens,
       }).catch((err) => {
         console.error('Corpus retrieval failed:', err)
         return [] as Awaited<ReturnType<typeof matchCorpusChunks>>
@@ -97,12 +110,13 @@ export async function POST(request: NextRequest) {
 
     const corpusWarning =
       corpusMatches.length === 0
-        ? 'No corpus matches found. Run ingest:martinez or widen pantry/query.'
+        ? 'No corpus matches found. Run ingest:martinez or widen key ingredients/query.'
         : undefined
 
     const recipe = await generateRecipeFromContext({
       query,
-      pantryTokens,
+      keyIngredientTokens,
+      stapleTokens,
       settings,
       personalMatches,
       corpusMatches,
@@ -110,6 +124,13 @@ export async function POST(request: NextRequest) {
         ? { feedback, previousRecipe: body.previous_recipe }
         : {}),
     })
+
+    const pantryGaps = computePantryGaps(
+      recipe,
+      includeUserSettings ? (settings?.staple_ingredients ?? []) : [],
+      keyIngredients
+    )
+    appendPantryGapToRecipeNotes(recipe, pantryGaps)
 
     const inspirationTitles = [
       ...new Set([
@@ -123,7 +144,9 @@ export async function POST(request: NextRequest) {
       personal_matches: personalMatches,
       corpus_matches: corpusMatches,
       meta: {
-        pantry_tokens: pantryTokens,
+        key_ingredient_tokens: keyIngredientTokens,
+        staple_tokens: stapleTokens,
+        not_on_staples_pantry: pantryGaps.not_on_staples,
         embed_model: EMBEDDING_MODEL,
         embed_dim: EMBEDDING_DIM,
         generation_model: getGenerationModelName(),

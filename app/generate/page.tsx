@@ -18,7 +18,7 @@ export default function GeneratePage() {
   const previewRef = useRef<HTMLDivElement>(null)
 
   const [query, setQuery] = useState('')
-  const [pantry, setPantry] = useState<string[]>([])
+  const [keyIngredients, setKeyIngredients] = useState<string[]>([])
   const [includeUserSettings, setIncludeUserSettings] = useState(true)
   const [generatedResult, setGeneratedResult] =
     useState<GenerateRecipeResponse | null>(null)
@@ -74,7 +74,7 @@ export default function GeneratePage() {
     setLoadingMessage('Generating recipe…')
     runGenerate({
       query: q,
-      pantry,
+      key_ingredients: keyIngredients,
       include_user_settings: includeUserSettings,
     })
   }
@@ -86,7 +86,7 @@ export default function GeneratePage() {
     setLoadingMessage('Updating recipe…')
     runGenerate({
       query: q,
-      pantry,
+      key_ingredients: keyIngredients,
       include_user_settings: includeUserSettings,
       feedback: fb,
       previous_recipe: generatedResult.recipe,
@@ -141,8 +141,9 @@ export default function GeneratePage() {
           Generate a recipe
         </h1>
         <p className="text-gray-600 mb-8">
-          Describe what you want to cook and what you have on hand. Review the
-          result before saving to your cookbook.
+          Describe what you want to cook and add key ingredients to focus the
+          recipe. After generation, staples from kitchen settings are used to
+          note what you may not have on hand. Review before saving.
         </p>
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-card p-6 mb-8 space-y-5">
@@ -160,13 +161,19 @@ export default function GeneratePage() {
             />
           </div>
 
-          <ChipInput
-            label="Pantry ingredients (optional)"
-            values={pantry}
-            onChange={setPantry}
-            placeholder="e.g. chickpeas, spinach, lemon"
-            disabled={isGenerating}
-          />
+          <div>
+            <ChipInput
+              label="Key ingredients (optional)"
+              values={keyIngredients}
+              onChange={setKeyIngredients}
+              placeholder="e.g. chickpeas, spinach, lemon"
+              disabled={isGenerating}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Ingredients you want this recipe built around. The recipe may
+              include others.
+            </p>
+          </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input

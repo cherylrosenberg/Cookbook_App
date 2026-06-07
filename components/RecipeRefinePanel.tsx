@@ -12,6 +12,7 @@ const QUICK_SUGGESTIONS = [
   'Make it quicker',
   'Fewer steps',
   'Make it vegetarian',
+  "I don't have an ingredient—suggest a replacement",
 ]
 
 export default function RecipeRefinePanel({

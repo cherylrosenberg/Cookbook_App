@@ -81,14 +81,20 @@ export default function UserSettingsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <ChipInput
-        label="Staple ingredients (always in your pantry)"
-        values={form.staple_ingredients ?? []}
-        onChange={(v) => update('staple_ingredients', v)}
-        placeholder="e.g. olive oil, garlic"
-        suggestions={['olive oil', 'garlic', 'onion', 'salt', 'pepper']}
-        disabled={saving}
-      />
+      <div>
+        <ChipInput
+          label="Staple ingredients (usually on hand)"
+          values={form.staple_ingredients ?? []}
+          onChange={(v) => update('staple_ingredients', v)}
+          placeholder="e.g. olive oil, garlic"
+          suggestions={['olive oil', 'garlic', 'onion', 'salt', 'pepper']}
+          disabled={saving}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Checked after a recipe is generated to note ingredients you may not
+          have on hand; not used when choosing the recipe.
+        </p>
+      </div>
 
       <ChipInput
         label="Diets"
@@ -122,13 +128,19 @@ export default function UserSettingsForm({
         disabled={saving}
       />
 
-      <ChipInput
-        label="Equipment you have"
-        values={form.equipment ?? []}
-        onChange={(v) => update('equipment', v)}
-        suggestions={EQUIPMENT_SUGGESTIONS}
-        disabled={saving}
-      />
+      <div>
+        <ChipInput
+          label="Also have (specialty equipment)"
+          values={form.equipment ?? []}
+          onChange={(v) => update('equipment', v)}
+          suggestions={EQUIPMENT_SUGGESTIONS}
+          disabled={saving}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Stovetop, oven, and basic pots/pans are always assumed. List extra
+          gear here—it&apos;s only used when it clearly fits the dish.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>

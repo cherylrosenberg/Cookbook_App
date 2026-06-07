@@ -42,7 +42,8 @@ export default function SettingsPage() {
           Kitchen settings
         </h1>
         <p className="text-gray-600 mb-8">
-          Staples and preferences are used when you generate recipes.
+          Diets and preferences guide recipe generation. Staples are checked
+          afterward to note what you may not have on hand.
         </p>
 
         {loading && (

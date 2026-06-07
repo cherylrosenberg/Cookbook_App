@@ -8,7 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { loadEnvLocal } from '../lib/load-env-local'
 import {
-  buildPantryTokens,
+  buildKeyIngredientTokens,
   buildRetrievalQueryText,
   matchCorpusChunks,
 } from '../lib/recipe-retrieval'
@@ -51,28 +51,30 @@ async function main() {
     process.exit(1)
   }
 
-  const pantryTokens =
+  const keyIngredientTokens =
     rawTokens && rawTokens.length > 0
-      ? buildPantryTokens(rawTokens, null)
+      ? buildKeyIngredientTokens(rawTokens)
       : []
 
   console.log('Query:', query)
-  if (pantryTokens.length) {
-    console.log('Filter tokens:', pantryTokens.join(', '))
+  if (keyIngredientTokens.length) {
+    console.log('Key ingredient filter tokens:', keyIngredientTokens.join(', '))
   }
 
   const supabase = createClient(url, key)
-  const retrievalQuery = buildRetrievalQueryText(query, pantryTokens)
+  const retrievalQuery = buildRetrievalQueryText(query, keyIngredientTokens)
 
   const data = await matchCorpusChunks(supabase, retrievalQuery, {
     limit: matchCount,
-    pantryTokens: pantryTokens.length ? pantryTokens : undefined,
+    keyIngredientTokens: keyIngredientTokens.length
+      ? keyIngredientTokens
+      : undefined,
   })
 
   if (!data.length) {
-    if (pantryTokens.length) {
+    if (keyIngredientTokens.length) {
       console.log(
-        'No matches after pantry token filter (vector search ran; no chunks with overlapping ingredient_tokens).'
+        'No matches after key ingredient token filter (vector search ran; no chunks with overlapping ingredient_tokens).'
       )
     } else {
       console.log('No matches. Run ingest:martinez first.')

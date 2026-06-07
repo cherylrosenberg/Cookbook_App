@@ -110,9 +110,6 @@ function formatUserSettingsBlock(settings: UserSettings | null): string {
   if (settings.cuisines_avoid?.length) {
     lines.push(`Avoid cuisines: ${settings.cuisines_avoid.join(', ')}`)
   }
-  if (settings.equipment?.length) {
-    lines.push(`Equipment: ${settings.equipment.join(', ')}`)
-  }
   if (settings.max_prep_minutes != null) {
     lines.push(`Max prep minutes: ${settings.max_prep_minutes}`)
   }
@@ -121,10 +118,48 @@ function formatUserSettingsBlock(settings: UserSettings | null): string {
   }
   if (settings.skill_level) lines.push(`Skill level: ${settings.skill_level}`)
   lines.push(`Default servings: ${settings.default_servings}`)
-  if (settings.staple_ingredients?.length) {
-    lines.push(`Staples: ${settings.staple_ingredients.join(', ')}`)
-  }
   return lines.length ? lines.join('\n') : '(No saved user preferences.)'
+}
+
+function formatKeyIngredientsBlock(keyIngredientTokens: string[]): string {
+  if (!keyIngredientTokens.length) return ''
+  return `
+Key ingredients to build around (primary tokens): ${keyIngredientTokens.join(', ')}
+- Center the dish on these when relevant; do not require using every key ingredient.
+- Other ingredients are fine for a tasty, coherent recipe.
+`
+}
+
+function formatStaplesForSubstitutionBlock(stapleTokens: string[]): string {
+  if (!stapleTokens.length) return ''
+  return `
+Pantry staples the user often has (for substitution suggestions only): ${stapleTokens.join(', ')}
+`
+}
+
+function formatEquipmentAvailabilityBlock(
+  settings: UserSettings | null
+): string {
+  if (!settings) return ''
+
+  const equipment = settings.equipment?.filter(Boolean) ?? []
+  const baseline =
+    'Baseline kitchen (always available): stovetop, oven, basic pots and pans.'
+
+  if (!equipment.length) {
+    return `
+${baseline}
+- Prefer these default methods; do not require specialty appliances unless the user's request asks for them.
+`
+  }
+
+  return `
+${baseline}
+Also has (optional specialty—use only when clearly the best method): ${equipment.join(', ')}
+- Default to stovetop or oven unless the dish or user request clearly benefits from a listed specialty appliance.
+- Do not require using every specialty item; do not name-check every appliance in the instructions.
+- Do not suggest techniques needing equipment outside the baseline or listed specialty items.
+`
 }
 
 function formatPersonalMatches(matches: PersonalRecipeMatch[]): string {
@@ -149,7 +184,9 @@ function formatCorpusMatches(matches: RecipeChunkMatch[]): string {
 
 export interface GenerateRecipeContextParams {
   query: string
-  pantryTokens: string[]
+  keyIngredientTokens: string[]
+  /** Staples only — refinement substitute hints; not used in initial generation. */
+  stapleTokens: string[]
   settings: UserSettings | null
   personalMatches: PersonalRecipeMatch[]
   corpusMatches: RecipeChunkMatch[]
@@ -201,7 +238,7 @@ export async function generateRecipeFromContext(
 
   const taskIntro = isRefinement
     ? `You are revising a recipe draft based on user feedback. Return ONE updated original recipe as valid JSON.`
-    : `You are a creative recipe developer. Create ONE NEW original recipe and return ONLY valid JSON:`
+    : `You are a creative recipe developer. First create ONE NEW good, coherent original recipe centered on the user's key ingredients and dietary preferences. Do NOT use or reference the user's pantry staple list when choosing ingredients. Do NOT require using every piece of equipment the user has—use only what fits the dish. Return ONLY valid JSON:`
 
   const refinementBlock = isRefinement
     ? `
@@ -213,8 +250,12 @@ ${formatPreviousRecipeSummary(params.previousRecipe!)}
 
 Refinement rules:
 - Apply the user's feedback precisely (substitutions, omissions, time changes, etc.).
-- Keep honoring diets, allergens, cuisines, time limits, and pantry when possible.
+- For missing ingredients, suggest a good culinary substitute; prefer pantry staples listed below when sensible.
+- Keep honoring diets, allergens, cuisines, time limits, and key ingredients when possible.
+- Default to stovetop or oven; use listed specialty appliances only when clearly best.
 - Still write original wording; do not copy corpus text verbatim.
+${formatStaplesForSubstitutionBlock(params.stapleTokens)}
+${formatKeyIngredientsBlock(params.keyIngredientTokens)}
 `
     : ''
 
@@ -225,18 +266,19 @@ ${RECIPE_JSON_SCHEMA}
 CRITICAL RULES:
 - Write an ORIGINAL recipe. Do NOT copy ingredient lists or instruction steps verbatim from the reference material below.
 - Use references for ideas, techniques, and flavor direction only—not as text to paste.
-- Honor user constraints (diets, allergens, cuisines, time limits, equipment).
-- Prefer ingredients from the pantry list when possible.
+- PRIORITY: Honor diets, allergen exclusions, cuisines, and time limits from user preferences below.
+- Do NOT constrain or bias ingredient choices based on pantry staples; staple inventory is checked after generation, not during.
+- Default to stovetop or oven over specialty appliances when both work; listed specialty items are optional extras.
 - Instructions: include each ingredient's full quantity from the ingredients list on its FIRST mention in the steps; do not repeat full quantities on later mentions. If a step uses only a partial amount (e.g. "½ cup"), write only that partial amount in that step.
 - Servings: use user default if not specified in the request.
 - Tags: 2-4 broad tags, Sentence case (same style as a home cookbook app).
 - source_url: omit or empty string for generated recipes.
-- notes: include a short line listing inspiration titles (if any), e.g. "Inspired by: Title A, Title B (corpus: Martinez dataset, CC BY-SA 3.0)."
+- notes: include a short line listing inspiration titles (if any), e.g. "Inspired by: Title A, Title B (corpus: Martinez dataset, CC BY-SA 3.0)." Do not add pantry or shopping notes in notes.
+${formatKeyIngredientsBlock(params.keyIngredientTokens)}
+${formatEquipmentAvailabilityBlock(params.settings)}
 ${refinementBlock}
 User request:
 ${params.query.trim()}
-
-Pantry tokens (canonical): ${params.pantryTokens.join(', ') || '(none)'}
 
 User preferences:
 ${formatUserSettingsBlock(params.settings)}

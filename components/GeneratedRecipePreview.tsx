@@ -8,7 +8,8 @@ interface GeneratedRecipePreviewProps {
   recipe: RecipeInput
   meta?: {
     generation_model?: string
-    pantry_tokens?: string[]
+    key_ingredient_tokens?: string[]
+    not_on_staples_pantry?: string[]
     refinement?: boolean
   }
 }
@@ -31,6 +32,14 @@ export default function GeneratedRecipePreview({
         </p>
       )}
       <h2 className="text-2xl font-bold text-gray-800 mb-3">{recipe.title}</h2>
+
+      {meta?.not_on_staples_pantry &&
+        meta.not_on_staples_pantry.length > 0 && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
+            <p className="font-medium mb-1">You may not have on hand</p>
+            <p>{meta.not_on_staples_pantry.join(', ')}</p>
+          </div>
+        )}
 
       {recipe.tags?.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
@@ -120,14 +129,18 @@ export default function GeneratedRecipePreview({
         </p>
       )}
 
-      {meta && (meta.generation_model || meta.pantry_tokens?.length) && (
+      {meta &&
+        (meta.generation_model || meta.key_ingredient_tokens?.length) && (
         <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 space-y-1">
           {meta.generation_model && (
             <p>Model: {meta.generation_model}</p>
           )}
-          {meta.pantry_tokens && meta.pantry_tokens.length > 0 && (
-            <p>Pantry tokens: {meta.pantry_tokens.join(', ')}</p>
-          )}
+          {meta.key_ingredient_tokens &&
+            meta.key_ingredient_tokens.length > 0 && (
+              <p>
+                Key ingredient tokens: {meta.key_ingredient_tokens.join(', ')}
+              </p>
+            )}
         </div>
       )}
     </div>

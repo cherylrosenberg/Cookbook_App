@@ -82,6 +82,16 @@ npx tsx scripts/backfill-ingredient-tokens.ts
 
 New recipes created via the API compute `ingredient_tokens` automatically on save.
 
+After updating ingredient normalization (primary tokens vs compound names like `black_pepper`), **re-run the backfill** so saved recipes use the new primaries (`salt` not `kosher_salt`, etc.):
+
+```bash
+npm run backfill:ingredient-tokens
+```
+
+Optional: `npm run test:ingredient-match` — smoke tests for primary selection and pantry matching.
+
+Corpus `recipe_chunks.ingredient_tokens` use the same rules on ingest; re-run `npm run ingest:martinez` only if you need corpus tokens fully aligned (personal cookbook backfill is usually enough).
+
 ### 2.6 RAG corpus — Martinez ingest (PR2)
 
 Embeddings use **`gemini-embedding-001`** at **768** dimensions (`RETRIEVAL_DOCUMENT` for corpus, `RETRIEVAL_QUERY` for search). Each row stores `embedding_model` and `embedding_dim` for audit.
@@ -132,28 +142,28 @@ In another terminal:
 ```bash
 curl -X POST http://localhost:3000/api/generate-recipe ^
   -H "Content-Type: application/json" ^
-  -d "{\"query\":\"vegetarian dinner with chickpeas and spinach\",\"pantry\":[\"chickpeas\",\"spinach\",\"lemon\"]}"
+  -d "{\"query\":\"vegetarian dinner with chickpeas and spinach\",\"key_ingredients\":[\"chickpeas\",\"spinach\",\"lemon\"]}"
 ```
 
 (PowerShell: use `Invoke-RestMethod` or curl with escaped quotes as above.)
 
 **Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-3-flash-preview`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
 
-**Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (tokens, models, optional `corpus_warning`, `refinement` when revising).
+**Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (`key_ingredient_tokens`, `staple_tokens`, `not_on_staples_pantry`, models, optional `corpus_warning`, `refinement` when revising). Staples are checked after generation (not used in the recipe prompt); retrieval uses key ingredients only.
 
 **Refine** (revise last draft — send both fields):
 
 ```bash
 curl -X POST http://localhost:3000/api/generate-recipe ^
   -H "Content-Type: application/json" ^
-  -d "{\"query\":\"vegetarian dinner\",\"pantry\":[\"spinach\"],\"feedback\":\"I do not have chickpeas, use cannellini beans\",\"previous_recipe\":{\"title\":\"...\",\"servings\":4,\"prep_time\":\"10 min\",\"cook_time\":\"20 min\",\"total_time\":\"\",\"ingredients\":[],\"instructions\":[],\"tags\":[]}}"
+  -d "{\"query\":\"vegetarian dinner\",\"key_ingredients\":[\"spinach\"],\"feedback\":\"I do not have chickpeas, use cannellini beans\",\"previous_recipe\":{\"title\":\"...\",\"servings\":4,\"prep_time\":\"10 min\",\"cook_time\":\"20 min\",\"total_time\":\"\",\"ingredients\":[],\"instructions\":[],\"tags\":[]}}"
 ```
 
 ### 2.8 Generator and settings UI (PR4)
 
 With `npm run dev` running:
 
-- **http://localhost:3000/generate** — query, pantry, generate, preview, refine with feedback, **Save to cookbook** (`POST /api/recipes`).
+- **http://localhost:3000/generate** — query, key ingredients, generate, preview, refine with feedback, **Save to cookbook** (`POST /api/recipes`).
 - **http://localhost:3000/settings** — staples, diets, allergens, cuisines, time limits, default servings.
 
 Generated recipes are **not** saved until you click Save.

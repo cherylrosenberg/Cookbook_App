@@ -23,26 +23,32 @@ export interface MatchPersonalRecipesOptions {
 
 export interface MatchCorpusChunksOptions {
   limit?: number
-  pantryTokens?: string[]
+  keyIngredientTokens?: string[]
 }
 
+/** Canonical tokens for key ingredients only (no staples). Used for retrieval. */
+export function buildKeyIngredientTokens(keyIngredients: string[]): string[] {
+  return normalizePantry(keyIngredients, [])
+}
+
+/** @deprecated Use buildKeyIngredientTokens — does not merge staples. */
 export function buildPantryTokens(
-  pantry: string[],
-  settings: UserSettings | null
+  keyIngredients: string[],
+  _settings: UserSettings | null
 ): string[] {
-  return normalizePantry(pantry, settings?.staple_ingredients ?? [])
+  return buildKeyIngredientTokens(keyIngredients)
 }
 
 /** Text sent to embedQuery for corpus search. */
 export function buildRetrievalQueryText(
   query: string,
-  pantryTokens: string[],
+  keyIngredientTokens: string[],
   feedback?: string
 ): string {
   const base = query.trim()
   let text = base
-  if (pantryTokens.length > 0) {
-    text += `\nAvailable ingredients: ${pantryTokens.join(', ')}`
+  if (keyIngredientTokens.length > 0) {
+    text += `\nKey ingredients: ${keyIngredientTokens.join(', ')}`
   }
   const trimmedFeedback = feedback?.trim()
   if (trimmedFeedback) {
@@ -53,11 +59,11 @@ export function buildRetrievalQueryText(
 
 export async function matchPersonalRecipes(
   supabase: SupabaseClient,
-  pantryTokens: string[],
+  keyIngredientTokens: string[],
   options: MatchPersonalRecipesOptions = {}
 ): Promise<PersonalRecipeMatch[]> {
   const limit = options.limit ?? 5
-  if (pantryTokens.length === 0) return []
+  if (keyIngredientTokens.length === 0) return []
 
   let q = supabase
     .from('recipes')
@@ -71,11 +77,11 @@ export async function matchPersonalRecipes(
   if (error) throw error
   if (!data?.length) return []
 
-  const pantrySet = new Set(pantryTokens)
+  const keySet = new Set(keyIngredientTokens)
   const scored = data
     .map((row) => {
       const tokens = (row.ingredient_tokens as string[]) ?? []
-      const overlap_count = tokens.filter((t) => pantrySet.has(t)).length
+      const overlap_count = tokens.filter((t) => keySet.has(t)).length
       return {
         id: row.id as string,
         title: row.title as string,
@@ -111,13 +117,13 @@ interface ChunkRowWithEmbedding {
 async function matchCorpusChunksByTokenOverlap(
   supabase: SupabaseClient,
   queryVector: number[],
-  pantryTokens: string[],
+  keyIngredientTokens: string[],
   limit: number
 ): Promise<RecipeChunkMatch[]> {
   const { data, error } = await supabase
     .from('recipe_chunks')
     .select('id, source, title, content, embedding')
-    .overlaps('ingredient_tokens', pantryTokens)
+    .overlaps('ingredient_tokens', keyIngredientTokens)
 
   if (error) throw error
   const candidates = (data ?? []) as ChunkRowWithEmbedding[]
@@ -147,9 +153,9 @@ export async function matchCorpusChunks(
   options: MatchCorpusChunksOptions = {}
 ): Promise<RecipeChunkMatch[]> {
   const limit = options.limit ?? 5
-  const pantryTokens =
-    options.pantryTokens?.filter((t) => Boolean(t)) ?? []
-  const hasTokenFilter = pantryTokens.length > 0
+  const keyIngredientTokens =
+    options.keyIngredientTokens?.filter((t) => Boolean(t)) ?? []
+  const hasTokenFilter = keyIngredientTokens.length > 0
 
   const queryVector = await embedQuery(queryText)
 
@@ -157,7 +163,7 @@ export async function matchCorpusChunks(
     return matchCorpusChunksByTokenOverlap(
       supabase,
       queryVector,
-      pantryTokens,
+      keyIngredientTokens,
       limit
     )
   }

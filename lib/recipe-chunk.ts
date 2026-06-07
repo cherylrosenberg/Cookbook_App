@@ -41,8 +41,8 @@ export function buildChunkContent(row: MartinezRow): string {
 export function ingredientTokensFromLines(lines: string[]): string[] {
   const tokens = new Set<string>()
   for (const line of lines) {
-    const { canonical } = normalizeIngredientLine(line)
-    if (canonical) tokens.add(canonical)
+    const { primary } = normalizeIngredientLine(line)
+    if (primary) tokens.add(primary)
   }
   return [...tokens].sort()
 }

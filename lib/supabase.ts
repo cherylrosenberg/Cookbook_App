@@ -113,6 +113,9 @@ export interface RecipeChunkMatch {
 
 export interface GenerateRecipeRequest {
   query: string
+  /** Ingredients to build the recipe around (retrieval + generation focus). */
+  key_ingredients?: string[]
+  /** @deprecated Use key_ingredients */
   pantry?: string[]
   /** Default true — load staples, diets, allergens, etc. from user_settings */
   include_user_settings?: boolean
@@ -132,7 +135,10 @@ export interface PersonalRecipeMatch {
 }
 
 export interface GenerateRecipeMeta {
-  pantry_tokens: string[]
+  key_ingredient_tokens: string[]
+  staple_tokens?: string[]
+  /** Main ingredients not matched to staples or key ingredients (post-generation check). */
+  not_on_staples_pantry?: string[]
   embed_model: string
   embed_dim: number
   generation_model: string

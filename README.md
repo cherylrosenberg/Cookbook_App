@@ -55,7 +55,7 @@ npm run dev
 
 - ✅ Add recipes from URL or text input
 - ✅ AI-powered recipe extraction using Google Gemini
-- ✅ Generate recipes from pantry + settings + RAG corpus (PR3 API, PR4 UI at `/generate`)
+- ✅ Generate recipes from key ingredients + settings + RAG corpus (PR3 API, PR4 UI at `/generate`)
 - ✅ Kitchen settings page (`/settings`) — staples, diets, allergens, cuisines
 - ✅ Preview generated recipes, refine with feedback, save when ready
 - ✅ Recipe library with responsive grid layout

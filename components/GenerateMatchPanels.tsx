@@ -83,7 +83,7 @@ export default function GenerateMatchPanels({
       <CollapsibleSection title={`Your cookbook (${personalMatches.length})`}>
         {personalMatches.length === 0 ? (
           <p className="text-gray-600 text-sm">
-            No saved recipes overlap your pantry tokens.
+            No saved recipes overlap your key ingredients.
           </p>
         ) : (
           <ul className="space-y-2">
