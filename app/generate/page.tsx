@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import AppNav from '@/components/AppNav'
 import ChipInput from '@/components/ChipInput'
 import GeneratedRecipePreview from '@/components/GeneratedRecipePreview'
-import GenerateMatchPanels from '@/components/GenerateMatchPanels'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import RecipeRefinePanel from '@/components/RecipeRefinePanel'
 import {
@@ -211,12 +210,6 @@ export default function GeneratePage() {
 
         {generatedResult && (
           <div ref={previewRef}>
-            <GenerateMatchPanels
-              corpusMatches={generatedResult.corpus_matches}
-              personalMatches={generatedResult.personal_matches}
-              meta={generatedResult.meta}
-            />
-
             <GeneratedRecipePreview
               recipe={generatedResult.recipe}
               meta={generatedResult.meta}
