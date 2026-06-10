@@ -70,6 +70,7 @@ This guide will walk you through setting up all the required environment variabl
    - `003_add_recipes_ingredient_tokens.sql` — `ingredient_tokens` column on `recipes`
    - `004_enable_pgvector_and_recipe_chunks.sql` — `recipe_chunks` + pgvector (enable **vector** extension in Database → Extensions if SQL fails)
    - `005_match_recipe_chunks_rpc.sql` — similarity search function
+   - `006_add_recipe_nutrition.sql` — `nutrition` JSONB column on `recipes` (AI estimates)
 4. For each file: copy the full contents, paste into SQL Editor, click **Run**
 5. Verify in **Table Editor**: `recipes`, `user_settings`, and `recipe_chunks` exist
 
@@ -147,7 +148,7 @@ curl -X POST http://localhost:3000/api/generate-recipe ^
 
 (PowerShell: use `Invoke-RestMethod` or curl with escaped quotes as above.)
 
-**Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-3-flash-preview`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
+**Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-2.5-flash`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
 
 **Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (`key_ingredient_tokens`, `staple_tokens`, `not_on_staples_pantry`, models, optional `corpus_warning`, `refinement` when revising). Staples are checked after generation (not used in the recipe prompt); retrieval uses key ingredients only.
 

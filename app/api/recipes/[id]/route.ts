@@ -85,6 +85,7 @@ export async function PUT(
         tags: recipe.tags || [],
         source_url: recipe.source_url || null,
         notes: recipe.notes || null,
+        nutrition: null,
       })
       .eq('id', id)
       .select()

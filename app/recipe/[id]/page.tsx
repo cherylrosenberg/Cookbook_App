@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { Recipe } from '@/lib/supabase'
+import { Recipe, RecipeNutrition } from '@/lib/supabase'
 import RecipeDetailView from '@/components/RecipeDetailView'
 import EditRecipeForm from '@/components/EditRecipeForm'
 import CarrotLoading from '@/components/CarrotLoading'
@@ -85,11 +85,16 @@ export default function RecipePage() {
     )
   }
 
+  const handleNutritionUpdated = (nutrition: RecipeNutrition) => {
+    setRecipe((prev) => (prev ? { ...prev, nutrition } : prev))
+  }
+
   return (
     <RecipeDetailView
       recipe={recipe}
       onEdit={() => setIsEditing(true)}
       onDelete={handleDelete}
+      onNutritionUpdated={handleNutritionUpdated}
     />
   )
 }

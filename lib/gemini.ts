@@ -1,15 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
+  NutritionPerServing,
   PersonalRecipeMatch,
   RecipeChunkMatch,
   RecipeInput,
   UserSettings,
 } from './supabase'
 import { enrichRecipeInstructions } from './instruction-enrich'
+import { formatRecipeIngredientsForNutrition } from './nutrition'
 import { normalizeIngredients } from './recipe-normalize'
 import { fetchRecipePageContent } from './fetch-recipe-page'
 
-const DEFAULT_GENERATION_MODEL = 'gemini-3-flash-preview'
+const DEFAULT_GENERATION_MODEL = 'gemini-2.5-flash'
 
 export function getGenerationModelName(): string {
   return process.env.GEMINI_GENERATION_MODEL ?? DEFAULT_GENERATION_MODEL
@@ -373,7 +375,7 @@ export async function extractRecipeFromText(text: string, sourceUrl?: string): P
   }
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' })
+  const model = genAI.getGenerativeModel({ model: getGenerationModelName() })
 
   let prompt = GEMINI_PROMPT + '\n\nRecipe content:\n' + text
   if (sourceUrl) {
@@ -399,4 +401,157 @@ export async function extractRecipeFromUrl(url: string): Promise<RecipeInput> {
   const recipe = await extractRecipeFromText(pageContent, url)
   recipe.source_url = url
   return recipe
+}
+
+const NUTRITION_JSON_SCHEMA = `{
+"per_serving": {
+  "calories": number,
+  "protein_g": number,
+  "fat_g": number,
+  "carbohydrates_g": number,
+  "fiber_g": number (optional),
+  "sugar_g": number (optional),
+  "sodium_mg": number (optional)
+},
+"confidence": "low" | "medium" | "high",
+"assumptions": ["string"] (max 5 short strings)
+}`
+
+export interface GeminiNutritionEstimate {
+  per_serving: NutritionPerServing
+  confidence?: 'low' | 'medium' | 'high'
+  assumptions?: string[]
+}
+
+function parseNonNegativeNumber(value: unknown, field: string): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`Invalid nutrition field: ${field}`)
+  }
+  return n
+}
+
+function parseOptionalNonNegativeNumber(
+  value: unknown,
+  field: string
+): number | undefined {
+  if (value === undefined || value === null) return undefined
+  return parseNonNegativeNumber(value, field)
+}
+
+/** Strip markdown fences and validate Gemini nutrition JSON. */
+export function parseGeminiNutritionJson(jsonText: string): GeminiNutritionEstimate {
+  let cleaned = jsonText.trim()
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+  }
+
+  const raw = JSON.parse(cleaned) as Record<string, unknown>
+  const perServingRaw = raw.per_serving as Record<string, unknown> | undefined
+  if (!perServingRaw || typeof perServingRaw !== 'object') {
+    throw new Error('Invalid nutrition structure: missing per_serving')
+  }
+
+  const per_serving: NutritionPerServing = {
+    calories: Math.round(
+      parseNonNegativeNumber(perServingRaw.calories, 'calories')
+    ),
+    protein_g: parseNonNegativeNumber(perServingRaw.protein_g, 'protein_g'),
+    fat_g: parseNonNegativeNumber(perServingRaw.fat_g, 'fat_g'),
+    carbohydrates_g: parseNonNegativeNumber(
+      perServingRaw.carbohydrates_g,
+      'carbohydrates_g'
+    ),
+  }
+
+  const fiber_g = parseOptionalNonNegativeNumber(
+    perServingRaw.fiber_g,
+    'fiber_g'
+  )
+  const sugar_g = parseOptionalNonNegativeNumber(
+    perServingRaw.sugar_g,
+    'sugar_g'
+  )
+  const sodium_mg = parseOptionalNonNegativeNumber(
+    perServingRaw.sodium_mg,
+    'sodium_mg'
+  )
+  if (fiber_g != null) per_serving.fiber_g = fiber_g
+  if (sugar_g != null) per_serving.sugar_g = sugar_g
+  if (sodium_mg != null) per_serving.sodium_mg = sodium_mg
+
+  let confidence: GeminiNutritionEstimate['confidence']
+  if (
+    raw.confidence === 'low' ||
+    raw.confidence === 'medium' ||
+    raw.confidence === 'high'
+  ) {
+    confidence = raw.confidence
+  }
+
+  let assumptions: string[] | undefined
+  if (Array.isArray(raw.assumptions)) {
+    assumptions = raw.assumptions
+      .filter((a): a is string => typeof a === 'string' && a.trim().length > 0)
+      .slice(0, 5)
+  }
+
+  return { per_serving, confidence, assumptions }
+}
+
+export async function estimateRecipeNutrition(
+  recipe: Pick<RecipeInput, 'title' | 'servings' | 'ingredients'>
+): Promise<GeminiNutritionEstimate> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
+
+  const ingredientLines = formatRecipeIngredientsForNutrition(recipe)
+  if (ingredientLines.length === 0) {
+    throw new Error('Recipe has no main ingredients to estimate nutrition from')
+  }
+
+  const servings =
+    recipe.servings && recipe.servings > 0 ? recipe.servings : 4
+
+  const prompt = `You are a nutrition estimation assistant. Analyze the recipe ingredients and estimate macronutrients PER SERVING.
+
+Return ONLY valid JSON matching this schema:
+${NUTRITION_JSON_SCHEMA}
+
+Rules:
+- Use the ingredient quantities as written; convert to standard portions internally (grams/ml) when needed.
+- List up to 5 short assumptions for ambiguous items (e.g. "1 large onion ≈ 150g") in the assumptions array.
+- Treat "to taste", "as needed", or "for garnish" as negligible unless clearly significant (e.g. ¼ cup olive oil).
+- Account for typical cooking losses where relevant (e.g. partial oil absorption when frying).
+- Sum all main ingredients, then divide by servings (${servings}) to get per_serving values.
+- calories: integer kcal; protein_g, fat_g, carbohydrates_g: grams with one decimal max; fiber_g and sugar_g optional; sodium_mg optional integer.
+- confidence: low if many vague quantities, medium if some estimates, high if mostly precise measured amounts.
+- Do not include any keys outside the schema.
+
+Recipe title: ${recipe.title}
+Servings: ${servings}
+
+Ingredients:
+${ingredientLines.map((line) => `- ${line}`).join('\n')}
+
+Output: Valid JSON only. No markdown fences or commentary.`
+
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({ model: getGenerationModelName() })
+
+  try {
+    const result = await model.generateContent(prompt, {
+      generationConfig: EXTRACT_GENERATION_CONFIG,
+    } as Parameters<typeof model.generateContent>[1])
+    const response = await result.response
+    return parseGeminiNutritionJson(response.text())
+  } catch (error) {
+    console.error('Error estimating nutrition:', error)
+    if (error instanceof Error && error.message.startsWith('Invalid nutrition')) {
+      throw error
+    }
+    throw new Error(
+      `Failed to estimate nutrition: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
 }

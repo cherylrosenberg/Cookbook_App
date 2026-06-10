@@ -31,7 +31,7 @@ npm install
 3. **Set up Supabase database:**
    - Go to your Supabase project dashboard
    - Navigate to SQL Editor
-   - Run migrations in order through `005_match_recipe_chunks_rpc.sql` (see SETUP_GUIDE.md)
+   - Run migrations in order through `006_add_recipe_nutrition.sql` (see SETUP_GUIDE.md)
    - If upgrading an existing DB, run `npm run backfill:ingredient-tokens` once
    - For RAG: download Martinez CSV to `data/`, then `npm run ingest:martinez` (see SETUP_GUIDE.md §2.6)
 
@@ -63,6 +63,7 @@ npm run dev
 - ✅ Filter recipes by tags (OR logic)
 - ✅ Recipe detail view with all information
 - ✅ Serving size adjuster with automatic quantity scaling
+- ✅ AI-estimated nutrition per serving on recipe detail (on-demand, cached)
 - ✅ Edit recipes (all fields)
 - ✅ Delete recipes
 - ✅ Mobile-responsive design (optimized for phone screens)

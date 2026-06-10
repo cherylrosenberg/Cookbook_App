@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Recipe } from '@/lib/supabase'
+import { Recipe, RecipeNutrition } from '@/lib/supabase'
 import AppNav from '@/components/AppNav'
+import RecipeNutritionPanel from '@/components/RecipeNutritionPanel'
 import { ArrowLeft, Edit, Clock, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
 import { scaleQuantity as scaleQuantityUtil, calculateTotalTime } from '@/lib/quantity-parser'
 import {
@@ -15,12 +16,14 @@ interface RecipeDetailViewProps {
   recipe: Recipe
   onEdit: () => void
   onDelete: () => void
+  onNutritionUpdated: (nutrition: RecipeNutrition) => void
 }
 
 export default function RecipeDetailView({
   recipe,
   onEdit,
   onDelete,
+  onNutritionUpdated,
 }: RecipeDetailViewProps) {
   const router = useRouter()
   const [servingMultiplier, setServingMultiplier] = useState(1)
@@ -149,44 +152,48 @@ export default function RecipeDetailView({
           </div>
         )}
 
-        {/* Serving Size Adjuster */}
-        <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-gray-600 mb-1 font-medium tracking-[0.5px] uppercase">Servings</div>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl font-bold text-forest-green">
-                  {scaledServings}
-                </span>
-                {servingMultiplier !== 1 && (
-                  <span className="text-sm text-gray-500 font-normal">
-                    (original: {originalServings})
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => adjustServings(-0.5)}
-                className="bg-forest-green text-white rounded-full w-10 h-10 flex items-center justify-center hover:opacity-90 transition-opacity"
-                aria-label="Decrease servings"
-              >
-                <Minus className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => adjustServings(0.5)}
-                className="bg-forest-green text-white rounded-full w-10 h-10 flex items-center justify-center hover:opacity-90 transition-opacity"
-                aria-label="Increase servings"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <RecipeNutritionPanel
+          recipe={recipe}
+          servingMultiplier={servingMultiplier}
+          onNutritionUpdated={onNutritionUpdated}
+        />
 
         {/* Ingredients */}
         <div className="bg-gray-50 rounded-xl p-6 mb-6 shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 tracking-[0.5px]">Ingredients</h2>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="text-2xl font-bold text-gray-800 tracking-[0.5px]">
+              Ingredients
+            </h2>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-gray-500 font-medium uppercase tracking-wide hidden sm:inline">
+                Servings
+              </span>
+              <button
+                onClick={() => adjustServings(-0.5)}
+                className="bg-forest-green text-white rounded-full w-8 h-8 flex items-center justify-center hover:opacity-90 transition-opacity"
+                aria-label="Decrease servings"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span
+                className="text-lg font-bold text-forest-green min-w-[1.5rem] text-center tabular-nums"
+                title={
+                  servingMultiplier !== 1
+                    ? `Original: ${originalServings} servings`
+                    : undefined
+                }
+              >
+                {scaledServings}
+              </span>
+              <button
+                onClick={() => adjustServings(0.5)}
+                className="bg-forest-green text-white rounded-full w-8 h-8 flex items-center justify-center hover:opacity-90 transition-opacity"
+                aria-label="Increase servings"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
           {recipe.ingredients.length === 0 ? (
             <div className="text-gray-500 py-4 font-normal">
               <p>No ingredients available</p>

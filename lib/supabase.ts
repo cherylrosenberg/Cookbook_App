@@ -2,6 +2,30 @@
 
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced'
 
+export interface NutritionPerServing {
+  calories: number
+  protein_g: number
+  fat_g: number
+  carbohydrates_g: number
+  fiber_g?: number
+  sugar_g?: number
+  sodium_mg?: number
+}
+
+export interface RecipeNutrition {
+  per_serving: NutritionPerServing
+  servings_basis: number
+  method: 'gemini_estimate'
+  model: string
+  confidence?: 'low' | 'medium' | 'high'
+  assumptions?: string[]
+  estimated_at: string
+  disclaimer: string
+}
+
+export const NUTRITION_DISCLAIMER =
+  'AI-estimated nutrition per serving. Not medical or dietary advice.'
+
 export interface Recipe {
   id: string
   user_id: string | null
@@ -16,6 +40,7 @@ export interface Recipe {
   ingredient_tokens: string[]
   source_url: string | null
   notes: string | null
+  nutrition: RecipeNutrition | null
   created_at: string
   updated_at: string
 }
