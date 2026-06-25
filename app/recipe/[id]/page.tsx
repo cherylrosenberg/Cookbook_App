@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Recipe, RecipeNutrition } from '@/lib/supabase'
 import RecipeDetailView from '@/components/RecipeDetailView'
 import EditRecipeForm from '@/components/EditRecipeForm'
 import CarrotLoading from '@/components/CarrotLoading'
+
+const PENDING_IMAGE_REFETCH_MS = 10_000
 
 export default function RecipePage() {
   const router = useRouter()
@@ -15,6 +17,7 @@ export default function RecipePage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const pendingImageRefetchDone = useRef(false)
 
   const fetchRecipe = useCallback(async () => {
     try {
@@ -22,12 +25,15 @@ export default function RecipePage() {
       if (response.ok) {
         const data = await response.json()
         setRecipe(data)
+        return data as Recipe
       } else {
         router.push('/')
+        return null
       }
     } catch (error) {
       console.error('Error fetching recipe:', error)
       router.push('/')
+      return null
     } finally {
       setLoading(false)
     }
@@ -36,6 +42,20 @@ export default function RecipePage() {
   useEffect(() => {
     fetchRecipe()
   }, [fetchRecipe])
+
+  useEffect(() => {
+    if (!recipe || recipe.image_url || pendingImageRefetchDone.current) return
+
+    const timer = setTimeout(async () => {
+      pendingImageRefetchDone.current = true
+      const data = await fetchRecipe()
+      if (data?.image_url) {
+        setRecipe(data)
+      }
+    }, PENDING_IMAGE_REFETCH_MS)
+
+    return () => clearTimeout(timer)
+  }, [recipe, fetchRecipe])
 
   const handleRecipeUpdated = () => {
     fetchRecipe()
@@ -89,12 +109,17 @@ export default function RecipePage() {
     setRecipe((prev) => (prev ? { ...prev, nutrition } : prev))
   }
 
+  const handleImageUpdated = (imageUrl: string) => {
+    setRecipe((prev) => (prev ? { ...prev, image_url: imageUrl } : prev))
+  }
+
   return (
     <RecipeDetailView
       recipe={recipe}
       onEdit={() => setIsEditing(true)}
       onDelete={handleDelete}
       onNutritionUpdated={handleNutritionUpdated}
+      onImageUpdated={handleImageUpdated}
     />
   )
 }

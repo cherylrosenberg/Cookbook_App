@@ -100,10 +100,10 @@ Embeddings use **`gemini-embedding-001`** at **768** dimensions (`RETRIEVAL_DOCU
 **Add to `.env.local`** (in addition to existing vars):
 
 ```env
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+SUPABASE_SECRET_KEY=your-secret-key-here
 ```
 
-Find it in Supabase → Project Settings → API → **service_role** (secret; never expose in the browser or commit to git).
+Find it in Supabase → Project Settings → API → **secret** key (`sb_secret_...`; never expose in the browser or commit to git). Legacy `service_role` JWT keys still work if set as `SUPABASE_SERVICE_ROLE_KEY`.
 
 **Download corpus:**
 
@@ -148,7 +148,36 @@ curl -X POST http://localhost:3000/api/generate-recipe ^
 
 (PowerShell: use `Invoke-RestMethod` or curl with escaped quotes as above.)
 
-**Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-2.5-flash`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
+**Optional env:** `GEMINI_GENERATION_MODEL` (default `gemini-3.5-flash-preview`) for the text model; embeddings always use `gemini-embedding-001` @ 768.
+
+### 2.8 Recipe cover images (AI-generated)
+
+New recipes get an AI cover image asynchronously after save (emoji placeholder until ready). Images are stored as WebP in Supabase Storage; only the public URL is saved on `recipes.image_url`.
+
+**Run migrations** in Supabase SQL editor (in order):
+
+- `supabase/migrations/007_add_recipe_image_url.sql`
+- `supabase/migrations/008_recipe_images_storage_bucket.sql`
+
+**Add to `.env.local`** (server-only vars; never expose secret key in the browser):
+
+```env
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
+RECIPE_IMAGES_BUCKET=recipe-images
+SUPABASE_SECRET_KEY=your-secret-key-here
+```
+
+`GEMINI_API_KEY` is shared with text generation and embeddings. Optional override: `GEMINI_IMAGE_MODEL` (default `gemini-3.1-flash-image`).
+
+**Backfill existing recipes** (rate-limited):
+
+```bash
+npm run backfill:recipe-images -- --limit 10
+```
+
+Flags: `--limit N`, `--delay-ms` (default 1500 between images).
+
+**Manual regenerate:** On a recipe detail page, use **Generate image** / **Regenerate image** (not automatic on edit).
 
 **Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (`key_ingredient_tokens`, `staple_tokens`, `not_on_staples_pantry`, models, optional `corpus_warning`, `refinement` when revising). Staples are checked after generation (not used in the recipe prompt); retrieval uses key ingredients only.
 
@@ -287,5 +316,5 @@ SUPABASE_PUBLISHABLE_KEY=... (or SUPABASE_ANON_KEY for legacy format)
 ❌ **DON'T:**
 - Share your API keys publicly
 - Commit `.env.local` to version control
-- Use your service role key in client-side code (only use anon key)
+- Use your secret key in client-side code (only use publishable/anon key)
 

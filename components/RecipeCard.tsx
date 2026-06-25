@@ -43,13 +43,21 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
       onClick={handleClick}
       className="group bg-white rounded-xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col h-full overflow-hidden"
     >
-      {/* Image placeholder with emoji and gradient */}
+      {/* Cover image or emoji placeholder */}
       <div
-        className={`${gradientClass} h-28 flex items-center justify-center shrink-0`}
+        className={`${gradientClass} h-28 flex items-center justify-center shrink-0 overflow-hidden`}
       >
-        <span className="text-5xl" role="img" aria-hidden>
-          {emoji}
-        </span>
+        {recipe.image_url ? (
+          <img
+            src={recipe.image_url}
+            alt={recipe.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-5xl" role="img" aria-hidden>
+            {emoji}
+          </span>
+        )}
       </div>
 
       <div className="p-5 md:p-6 flex-1 flex flex-col">

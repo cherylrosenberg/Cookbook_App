@@ -41,6 +41,7 @@ export interface Recipe {
   source_url: string | null
   notes: string | null
   nutrition: RecipeNutrition | null
+  image_url: string | null
   created_at: string
   updated_at: string
 }

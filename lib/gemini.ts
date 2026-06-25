@@ -11,7 +11,7 @@ import { formatRecipeIngredientsForNutrition } from './nutrition'
 import { normalizeIngredients } from './recipe-normalize'
 import { fetchRecipePageContent } from './fetch-recipe-page'
 
-const DEFAULT_GENERATION_MODEL = 'gemini-2.5-flash'
+const DEFAULT_GENERATION_MODEL = 'gemini-3.5-flash-preview'
 
 export function getGenerationModelName(): string {
   return process.env.GEMINI_GENERATION_MODEL ?? DEFAULT_GENERATION_MODEL

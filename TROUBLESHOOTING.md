@@ -56,7 +56,7 @@ SUPABASE_ANON_KEY=eyJ...your-very-long-key-here
 
 ### Issue: Supabase Key Format Wrong
 **Symptom:** API returns error or connection fails
-**Solution:** Make sure you're using the **anon/public** key, not the service_role key or publishable key. It should start with `eyJ`.
+**Solution:** Make sure you're using the **publishable** or **anon** key for the app client, not the secret key. Publishable keys start with `sb_publishable_`; legacy anon keys start with `eyJ`.
 
 ### Issue: Environment Variables Not Loading
 **Symptom:** Server shows warnings about missing env vars

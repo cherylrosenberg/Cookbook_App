@@ -19,6 +19,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
+  const pendingImageRefetchDone = useRef(false)
 
   const headerChangeAt = useRef(0)
   useEffect(() => {
@@ -88,18 +89,40 @@ export default function Home() {
       }
 
       const data = await response.json()
-      setRecipes(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      setRecipes(list)
+      return list as Recipe[]
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch recipes'
       setError(errorMessage)
+      return []
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRecipeAdded = () => {
-    fetchRecipes()
+  const handleRecipeAdded = async () => {
+    const list = await fetchRecipes()
     setIsModalOpen(false)
+
+    if (pendingImageRefetchDone.current || !list.some((r) => !r.image_url)) {
+      return
+    }
+    pendingImageRefetchDone.current = true
+
+    const refetch = () => {
+      void fetchRecipes()
+    }
+
+    setTimeout(refetch, 10_000)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        document.removeEventListener('visibilitychange', onVisibility)
+        refetch()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
   }
 
   const handleDeleteRecipe = async (id: string) => {

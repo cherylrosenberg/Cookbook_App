@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RecipeInput } from '@/lib/supabase'
+import { deleteRecipeImage } from '@/lib/recipe-storage'
 import { recipeToIngredientTokens } from '@/lib/ingredient-normalize'
 import {
   normalizeIngredients,
@@ -118,6 +119,15 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
+    const env = requireSupabaseEnv()
+    if (!env.ok) return env.response
+
+    try {
+      await deleteRecipeImage(id)
+    } catch (storageErr) {
+      console.warn('Storage delete skipped or failed:', storageErr)
+    }
+
     const supabase = createServerSupabaseClient()
     const { error } = await supabase
       .from('recipes')

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { RecipeInput } from '@/lib/supabase'
+import { generateAndPersistRecipeImage } from '@/lib/recipe-image'
 import { insertRecipeFromInput } from '@/lib/save-recipe'
 import { normalizeRecipeIngredients } from '@/lib/recipe-normalize'
 import { requireSupabaseEnv } from '@/lib/supabase-env'
@@ -44,6 +46,9 @@ export async function POST(request: NextRequest) {
 
     try {
       const saved = await insertRecipeFromInput(supabase, recipe)
+      after(async () => {
+        await generateAndPersistRecipeImage(saved.id)
+      })
       return NextResponse.json(saved, { status: 201 })
     } catch (err) {
       if (err instanceof Error && err.message === 'Missing required fields') {

@@ -162,20 +162,21 @@ async function main() {
 
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey =
+    process.env.SUPABASE_SECRET_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey) {
     console.error(
-      'Missing SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or anon/publishable key)'
+      'Missing SUPABASE_URL and SUPABASE_SECRET_KEY (or anon/publishable key)'
     )
     process.exit(1)
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!process.env.SUPABASE_SECRET_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.warn(
-      'Warning: SUPABASE_SERVICE_ROLE_KEY not set; using anon key (may fail on bulk insert).'
+      'Warning: SUPABASE_SECRET_KEY not set; using anon key (may fail on bulk insert).'
     )
   }
 
