@@ -109,17 +109,12 @@ export default function RecipePage() {
     setRecipe((prev) => (prev ? { ...prev, nutrition } : prev))
   }
 
-  const handleImageUpdated = (imageUrl: string) => {
-    setRecipe((prev) => (prev ? { ...prev, image_url: imageUrl } : prev))
-  }
-
   return (
     <RecipeDetailView
       recipe={recipe}
       onEdit={() => setIsEditing(true)}
       onDelete={handleDelete}
       onNutritionUpdated={handleNutritionUpdated}
-      onImageUpdated={handleImageUpdated}
     />
   )
 }

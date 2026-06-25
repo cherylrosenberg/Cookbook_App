@@ -177,7 +177,7 @@ npm run backfill:recipe-images -- --limit 10
 
 Flags: `--limit N`, `--delay-ms` (default 1500 between images).
 
-**Manual regenerate:** On a recipe detail page, use **Generate image** / **Regenerate image** (not automatic on edit).
+**Manual regenerate:** On the edit recipe page, check **Regenerate cover image** (or **Generate cover image** if none exists) before **Save Changes**.
 
 **Response:** `recipe` (JSON, not saved), `personal_matches`, `corpus_matches`, `meta` (`key_ingredient_tokens`, `staple_tokens`, `not_on_staples_pantry`, models, optional `corpus_warning`, `refinement` when revising). Staples are checked after generation (not used in the recipe prompt); retrieval uses key ingredients only.
 

@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Recipe, RecipeNutrition } from '@/lib/supabase'
 import AppNav from '@/components/AppNav'
 import RecipeNutritionPanel from '@/components/RecipeNutritionPanel'
-import CarrotLoading from '@/components/CarrotLoading'
-import { ArrowLeft, Edit, Clock, Plus, Minus, Trash2, ExternalLink, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Edit, Clock, Plus, Minus, Trash2, ExternalLink } from 'lucide-react'
 import { scaleQuantity as scaleQuantityUtil, calculateTotalTime } from '@/lib/quantity-parser'
 import {
   getEmojiForRecipe,
@@ -18,7 +17,6 @@ interface RecipeDetailViewProps {
   onEdit: () => void
   onDelete: () => void
   onNutritionUpdated: (nutrition: RecipeNutrition) => void
-  onImageUpdated: (imageUrl: string) => void
 }
 
 export default function RecipeDetailView({
@@ -26,12 +24,9 @@ export default function RecipeDetailView({
   onEdit,
   onDelete,
   onNutritionUpdated,
-  onImageUpdated,
 }: RecipeDetailViewProps) {
   const router = useRouter()
   const [servingMultiplier, setServingMultiplier] = useState(1)
-  const [imageLoading, setImageLoading] = useState(false)
-  const [imageError, setImageError] = useState<string | null>(null)
   const originalServings = recipe.servings
 
   const adjustServings = (delta: number) => {
@@ -51,71 +46,24 @@ export default function RecipeDetailView({
   const emoji = getEmojiForRecipe(recipe)
   const gradientClass = getGradientClassForRecipe(recipe)
 
-  const runGenerateImage = async () => {
-    setImageLoading(true)
-    setImageError(null)
-    try {
-      const res = await fetch(`/api/recipes/${recipe.id}/generate-image`, {
-        method: 'POST',
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const msg = data.error || `HTTP ${res.status}`
-        if (res.status === 503 || msg.includes('503')) {
-          throw new Error(
-            'Image service is busy. Please wait a moment and try again.'
-          )
-        }
-        throw new Error(msg)
-      }
-      if (data.image_url) {
-        onImageUpdated(data.image_url as string)
-      }
-    } catch (err) {
-      setImageError(
-        err instanceof Error ? err.message : 'Failed to generate image'
-      )
-    } finally {
-      setImageLoading(false)
-    }
-  }
-
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
         <AppNav />
         {/* Header image */}
-        <div className="relative -mx-4 md:-mx-6 lg:-mx-8 mb-6">
-          <div
-            className={`${gradientClass} h-40 md:h-48 rounded-xl flex items-center justify-center overflow-hidden`}
-          >
-            {recipe.image_url ? (
-              <img
-                src={recipe.image_url}
-                alt={recipe.title}
-                className="h-full w-full object-cover"
-              />
-            ) : imageLoading ? (
-              <CarrotLoading size="small" noLabel />
-            ) : (
-              <span className="text-6xl md:text-7xl" role="img" aria-hidden>
-                {emoji}
-              </span>
-            )}
-          </div>
-          <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4">
-            <button
-              type="button"
-              onClick={runGenerateImage}
-              disabled={imageLoading}
-              className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-800 text-sm font-medium px-3 py-1.5 rounded-full shadow-sm transition-colors disabled:opacity-60"
-            >
-              <ImageIcon className="w-4 h-4" />
-              {recipe.image_url ? 'Regenerate image' : 'Generate image'}
-            </button>
-          </div>
-          {imageError && (
-            <p className="text-sm text-red-600 mt-2 px-1">{imageError}</p>
+        <div
+          className={`${gradientClass} h-40 md:h-48 -mx-4 md:-mx-6 lg:-mx-8 mb-6 rounded-xl flex items-center justify-center overflow-hidden`}
+        >
+          {recipe.image_url ? (
+            <img
+              src={recipe.image_url}
+              alt={recipe.title}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-6xl md:text-7xl" role="img" aria-hidden>
+              {emoji}
+            </span>
           )}
         </div>
 

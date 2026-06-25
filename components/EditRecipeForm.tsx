@@ -28,6 +28,7 @@ export default function EditRecipeForm({
     notes: recipe.notes || '',
   })
   const [tagsInput, setTagsInput] = useState<string>(recipe.tags.join(', '))
+  const [regenerateImage, setRegenerateImage] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,6 +59,26 @@ export default function EditRecipeForm({
 
       if (!response.ok) {
         throw new Error('Failed to update recipe')
+      }
+
+      if (regenerateImage) {
+        const imageRes = await fetch(`/api/recipes/${recipe.id}/generate-image`, {
+          method: 'POST',
+        })
+        const imageData = await imageRes.json().catch(() => ({}))
+        if (!imageRes.ok) {
+          const msg = imageData.error || `HTTP ${imageRes.status}`
+          if (imageRes.status === 503 || msg.includes('503')) {
+            throw new Error(
+              'Recipe saved, but image service is busy. Try again from edit.'
+            )
+          }
+          throw new Error(
+            imageData.error
+              ? `Recipe saved, but image failed: ${imageData.error}`
+              : 'Recipe saved, but image generation failed'
+          )
+        }
       }
 
       onSave()
@@ -425,6 +446,29 @@ export default function EditRecipeForm({
             />
           </div>
 
+          {/* Cover image */}
+          <div className="p-4 border border-gray-200 rounded-lg bg-white">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={regenerateImage}
+                onChange={(e) => setRegenerateImage(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-forest-green focus:ring-forest-green"
+              />
+              <span>
+                <span className="block text-sm font-medium text-gray-800">
+                  {recipe.image_url
+                    ? 'Regenerate cover image'
+                    : 'Generate cover image'}
+                </span>
+                <span className="block text-sm text-gray-600 mt-0.5">
+                  Uses the updated title and ingredients after you save. May take
+                  10–15 seconds.
+                </span>
+              </span>
+            </label>
+          </div>
+
           {/* Error */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -446,7 +490,11 @@ export default function EditRecipeForm({
               disabled={loading}
               className="flex-1 bg-forest-green text-white py-3 px-6 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading
+                ? regenerateImage
+                  ? 'Saving and generating image…'
+                  : 'Saving...'
+                : 'Save Changes'}
             </button>
           </div>
         </form>
